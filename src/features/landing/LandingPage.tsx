@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Typography, Button, Chip, Divider,
@@ -45,9 +45,11 @@ function GlowBlob({ x, y, color, size = 600 }: { x: string; y: string; color: st
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar({ onCTA }: { onCTA: () => void }) {
   const [scrolled, setScrolled] = useState(false)
-  if (typeof window !== 'undefined') {
-    window.addEventListener('scroll', () => setScrolled(window.scrollY > 40), { passive: true })
-  }
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 40)
+    window.addEventListener('scroll', handler, { passive: true })
+    return () => window.removeEventListener('scroll', handler)
+  }, [])
   return (
     <Box sx={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,

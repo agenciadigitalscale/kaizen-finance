@@ -7,10 +7,6 @@ import WarningAmberIcon  from '@mui/icons-material/WarningAmber'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import SmartToyIcon      from '@mui/icons-material/SmartToy'
 import { useHousehold, useUser, useIsDemo } from '@/features/auth/authStore'
-import { useBillsStore }        from '@/shared/stores/billsStore'
-import { useTransactionsStore } from '@/shared/stores/transactionsStore'
-import { useAccountsStore }     from '@/shared/stores/accountsStore'
-import { useGoalsStore }        from '@/shared/stores/goalsStore'
 import { api } from '@/shared/lib/api'
 import { KZ } from '@/theme'
 import { formatBRL } from '@/types'
@@ -366,6 +362,9 @@ export default function DashboardPage() {
           {' '}Nenhum mês crítico detectado no horizonte.
         </Typography>
       </Paper>
+
+      {/* ── IA Financeira ── */}
+      <AIAnalysisPanel financialData={demo} />
 
     </Box>
   )
