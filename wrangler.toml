@@ -13,7 +13,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding      = "DB"
 database_name = "kaizen-db"
-database_id  = "PLACEHOLDER_REPLACE_WITH_REAL_ID"
+database_id  = "d2064496-c7f2-499b-b661-a5d761fc667e"
 
 # ── JWT Secret (KV ou variável de ambiente) ───────────────────────────────────
 # Adicionar via: wrangler secret put JWT_SECRET
