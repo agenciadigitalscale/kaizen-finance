@@ -40,10 +40,11 @@ export default function LoginPage() {
       if (mode === 'login') {
         res = await api.auth.login(form.email, form.password) as AuthResponse
       } else {
-        if (!form.name || !form.householdName)
-          { setError('Preencha todos os campos'); setLoading(false); return }
+        if (!form.name)
+          { setError('Preencha seu nome'); setLoading(false); return }
         res = await api.auth.signup({
-          name: form.name, email: form.email, password: form.password, householdName: form.householdName,
+          name: form.name, email: form.email, password: form.password,
+          householdName: form.householdName || form.name,
         }) as AuthResponse
       }
       if (res.ok && res.data) {
@@ -135,8 +136,8 @@ export default function LoginPage() {
                   style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}
                 >
                   <TextField label="Seu nome" size="small" fullWidth value={form.name} onChange={update('name')} autoFocus />
-                  <TextField label="Nome da família" size="small" fullWidth value={form.householdName} onChange={update('householdName')}
-                    helperText='Ex: "Família Silva" ou "Kaique & Ana"' />
+                  <TextField label="Nome da conta (opcional)" size="small" fullWidth value={form.householdName} onChange={update('householdName')}
+                    helperText='Deixe em branco para uso individual, ou "Kaique & Ana" para casal/família' />
                 </motion.div>
               )}
             </AnimatePresence>
