@@ -7,6 +7,10 @@ import WarningAmberIcon  from '@mui/icons-material/WarningAmber'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import SmartToyIcon      from '@mui/icons-material/SmartToy'
 import { useHousehold, useUser, useIsDemo } from '@/features/auth/authStore'
+import { useAccountsStore }     from '@/shared/stores/accountsStore'
+import { useBillsStore }        from '@/shared/stores/billsStore'
+import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import { useGoalsStore }        from '@/shared/stores/goalsStore'
 import { api } from '@/shared/lib/api'
 import { KZ } from '@/theme'
 import { formatBRL } from '@/types'
@@ -24,20 +28,16 @@ function KPICard({ label, value, sub, color, icon, trend }: {
         background: `linear-gradient(135deg, ${color}06 0%, rgba(6,10,14,0) 100%)`,
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* Glow corner */}
         <Box sx={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle, ${color}18 0%, transparent 70%)`, pointerEvents: 'none' }} />
-
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
           <Typography sx={{ fontSize: '0.65rem', color: KZ.t2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             {label}
           </Typography>
           <Box sx={{ color, fontSize: '1.1rem', lineHeight: 1 }}>{icon}</Box>
         </Box>
-
         <Typography sx={{ fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 900, color, letterSpacing: '-0.03em', lineHeight: 1 }}>
           {value}
         </Typography>
-
         {sub && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.8 }}>
             {trend === 'up'   && <TrendingUpIcon   sx={{ fontSize: 13, color: KZ.green }} />}
@@ -192,38 +192,99 @@ function AIAnalysisPanel({ financialData }: { financialData: unknown }) {
   )
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+interface DashboardData {
+  totalBalance:  number
+  monthIncome:   number
+  monthExpense:  number
+  overdueBills:  number
+  pendingBills:  number
+  score:         number
+  bills:  { name: string; amount: number; dueDate: string; daysLeft: number }[]
+  goals:  { name: string; current: number; target: number; color: string; icon: string }[]
+}
+
+function computeHealthScore(totalBalance: number, monthIncome: number, monthExpense: number): number {
+  const savingsRate    = monthIncome > 0 ? ((monthIncome - monthExpense) / monthIncome) * 100 : 0
+  const savingsPoints  = Math.min(25, Math.max(0, savingsRate / 2))
+  const debtPoints     = 25
+  const budgetPoints   = monthExpense <= monthIncome ? 25 : Math.max(0, 25 - ((monthExpense - monthIncome) / Math.max(monthIncome, 1) * 25))
+  const reservePoints  = totalBalance > 0 ? 25 : 0
+  return Math.min(100, Math.max(0, Math.round(savingsPoints + debtPoints + budgetPoints + reservePoints)))
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const user      = useUser()
   const household = useHousehold()
+  const isDemo    = useIsDemo()
   const now       = new Date()
   const monthName = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const monthStr  = now.toISOString().slice(0, 7)
+  const today     = now.toISOString().slice(0, 10)
 
-  // Dados de demonstração enquanto backend não está conectado
-  const demo = useMemo(() => ({
-    totalBalance:   125_48000,   // R$ 12.548,00
-    monthIncome:    850_000,     // R$ 8.500,00
-    monthExpense:   534_200,     // R$ 5.342,00
-    pendingBills:   3,
-    overdueBills:   1,
-    score:          72,
+  // Stores
+  const accounts     = useAccountsStore(s => s.accounts)
+  const storeBills   = useBillsStore(s => s.bills)
+  const transactions = useTransactionsStore(s => s.transactions)
+  const storeGoals   = useGoalsStore(s => s.goals)
+
+  // Demo data
+  const demoData = useMemo<DashboardData>(() => ({
+    totalBalance:  12548000,
+    monthIncome:   850000,
+    monthExpense:  534200,
+    overdueBills:  1,
+    pendingBills:  3,
+    score:         72,
     bills: [
-      { name: 'Aluguel',        amount: 180000, dueDate: '01/06/2026', daysLeft: -2  },
-      { name: 'Internet',       amount:  11990, dueDate: '05/06/2026', daysLeft: 2   },
-      { name: 'Energia',        amount:  23400, dueDate: '08/06/2026', daysLeft: 5   },
-      { name: 'Cartão Nubank',  amount: 125000, dueDate: '10/06/2026', daysLeft: 7   },
-      { name: 'Netflix',        amount:   5490, dueDate: '15/06/2026', daysLeft: 12  },
+      { name: 'Aluguel',       amount: 180000, dueDate: '01/06/2026', daysLeft: -2  },
+      { name: 'Internet',      amount:  11990, dueDate: '05/06/2026', daysLeft: 2   },
+      { name: 'Energia',       amount:  23400, dueDate: '08/06/2026', daysLeft: 5   },
+      { name: 'Cartão Nubank', amount: 125000, dueDate: '10/06/2026', daysLeft: 7   },
+      { name: 'Netflix',       amount:   5490, dueDate: '15/06/2026', daysLeft: 12  },
     ],
     goals: [
-      { name: 'Fundo emergência', current: 800000, target: 2400000, color: KZ.green, icon: '🛡️' },
-      { name: 'Viagem Europa',    current: 320000, target: 1500000, color: KZ.gold,  icon: '✈️' },
-      { name: 'Carro novo',       current: 1200000, target: 8000000, color: KZ.blue, icon: '🚗' },
+      { name: 'Fundo emergência', current: 800000,  target: 2400000, color: KZ.green, icon: '🛡️' },
+      { name: 'Viagem Europa',    current: 320000,  target: 1500000, color: KZ.gold,  icon: '✈️' },
+      { name: 'Carro novo',       current: 1200000, target: 8000000, color: KZ.blue,  icon: '🚗' },
     ],
   }), [])
 
-  const balance = demo.totalBalance
-  const cashflow = demo.monthIncome - demo.monthExpense
+  // Real data from stores
+  const realData = useMemo<DashboardData>(() => {
+    const totalBalance = accounts.reduce((s, a) => s + (a.balance > 0 ? a.balance : 0), 0)
 
+    const monthTx      = transactions.filter(t => t.date.startsWith(monthStr) && t.status === 'confirmed')
+    const monthIncome  = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+    const monthExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+
+    const unpaidBills  = storeBills.filter(b => b.status !== 'paid')
+    const overdueBills = unpaidBills.filter(b => b.dueDate < today).length
+    const pendingBills = unpaidBills.filter(b => b.dueDate >= today).length
+
+    const bills = unpaidBills
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+      .slice(0, 5)
+      .map(b => {
+        const daysLeft = Math.round((new Date(b.dueDate).getTime() - new Date(today).getTime()) / 86_400_000)
+        return { name: b.name, amount: b.amount, dueDate: new Date(b.dueDate).toLocaleDateString('pt-BR'), daysLeft }
+      })
+
+    const goals = storeGoals
+      .filter(g => g.status === 'active')
+      .slice(0, 3)
+      .map(g => ({ name: g.name, current: g.currentAmount, target: g.targetAmount, color: g.color, icon: g.icon }))
+
+    return {
+      totalBalance, monthIncome, monthExpense, overdueBills, pendingBills,
+      score: computeHealthScore(totalBalance, monthIncome, monthExpense),
+      bills, goals,
+    }
+  }, [accounts, storeBills, transactions, storeGoals, monthStr, today])
+
+  const data    = isDemo ? demoData : realData
+  const cashflow = data.monthIncome - data.monthExpense
   const greeting = now.getHours() < 12 ? 'Bom dia' : now.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
 
   return (
@@ -241,10 +302,10 @@ export default function DashboardPage() {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 0.8 }}>
-            {demo.overdueBills > 0 && (
+            {data.overdueBills > 0 && (
               <Chip
                 icon={<WarningAmberIcon />}
-                label={`${demo.overdueBills} conta atrasada`}
+                label={`${data.overdueBills} conta${data.overdueBills > 1 ? 's' : ''} atrasada${data.overdueBills > 1 ? 's' : ''}`}
                 size="small" color="error" variant="outlined"
                 sx={{ fontSize: '0.65rem', fontWeight: 700 }}
               />
@@ -261,10 +322,10 @@ export default function DashboardPage() {
       {/* ── KPI Row ── */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', md: 'repeat(4,1fr)' }, gap: 1.5 }}>
         {[
-          { label: 'Saldo total',    value: formatBRL(balance),        color: KZ.green, icon: <AccountBalanceIcon sx={{ fontSize: 18 }} />, sub: 'todas as contas', trend: 'up' as const },
-          { label: 'Receitas/mês',   value: formatBRL(demo.monthIncome),   color: KZ.green, icon: '📈', sub: `mês de ${now.toLocaleDateString('pt-BR', { month: 'short' })}`, trend: 'up' as const },
-          { label: 'Despesas/mês',   value: formatBRL(demo.monthExpense),  color: KZ.red,   icon: '📉', sub: `${Math.round((demo.monthExpense/demo.monthIncome)*100)}% da receita`, trend: 'neutral' as const },
-          { label: 'Fluxo do mês',   value: formatBRL(cashflow),       color: cashflow >= 0 ? KZ.green : KZ.red, icon: cashflow >= 0 ? '✅' : '⚠️', sub: cashflow >= 0 ? 'saldo positivo' : 'saldo negativo', trend: cashflow >= 0 ? 'up' as const : 'down' as const },
+          { label: 'Saldo total',   value: formatBRL(data.totalBalance),  color: KZ.green, icon: <AccountBalanceIcon sx={{ fontSize: 18 }} />, sub: 'todas as contas',  trend: 'up' as const },
+          { label: 'Receitas/mês',  value: formatBRL(data.monthIncome),   color: KZ.green, icon: '📈', sub: `mês de ${now.toLocaleDateString('pt-BR', { month: 'short' })}`, trend: 'up' as const },
+          { label: 'Despesas/mês',  value: formatBRL(data.monthExpense),  color: KZ.red,   icon: '📉', sub: data.monthIncome > 0 ? `${Math.round((data.monthExpense / data.monthIncome) * 100)}% da receita` : '', trend: 'neutral' as const },
+          { label: 'Fluxo do mês',  value: formatBRL(cashflow), color: cashflow >= 0 ? KZ.green : KZ.red, icon: cashflow >= 0 ? '✅' : '⚠️', sub: cashflow >= 0 ? 'saldo positivo' : 'saldo negativo', trend: cashflow >= 0 ? 'up' as const : 'down' as const },
         ].map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07, duration: 0.4 }}>
             <KPICard {...kpi} />
@@ -281,10 +342,15 @@ export default function DashboardPage() {
             <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: KZ.t2, flex: 1 }}>
               Próximas contas
             </Typography>
-            <Chip label={`${demo.pendingBills} pendentes`} size="small"
-              sx={{ height: 18, fontSize: '0.58rem', bgcolor: 'rgba(245,158,11,0.1)', color: KZ.gold, border: `1px solid rgba(245,158,11,0.2)` }} />
+            {data.pendingBills > 0 && (
+              <Chip label={`${data.pendingBills} pendente${data.pendingBills > 1 ? 's' : ''}`} size="small"
+                sx={{ height: 18, fontSize: '0.58rem', bgcolor: 'rgba(245,158,11,0.1)', color: KZ.gold, border: `1px solid rgba(245,158,11,0.2)` }} />
+            )}
           </Box>
-          {demo.bills.map(b => <BillRow key={b.name} {...b} />)}
+          {data.bills.length > 0
+            ? data.bills.map(b => <BillRow key={b.name} {...b} />)
+            : <Typography sx={{ fontSize: '0.78rem', color: KZ.t3 }}>Nenhuma conta a pagar</Typography>
+          }
         </Paper>
 
         {/* Metas */}
@@ -292,27 +358,31 @@ export default function DashboardPage() {
           <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: KZ.t2, mb: 2 }}>
             Metas financeiras
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {demo.goals.map(g => {
-              const pct = Math.min(Math.round((g.current / g.target) * 100), 100)
-              return (
-                <Box key={g.name}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.8 }}>
-                    <Typography sx={{ fontSize: '0.9rem', lineHeight: 1 }}>{g.icon}</Typography>
-                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, flex: 1 }}>{g.name}</Typography>
-                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: g.color }}>{pct}%</Typography>
+          {data.goals.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {data.goals.map(g => {
+                const pct = g.target > 0 ? Math.min(Math.round((g.current / g.target) * 100), 100) : 0
+                return (
+                  <Box key={g.name}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.8 }}>
+                      <Typography sx={{ fontSize: '0.9rem', lineHeight: 1 }}>{g.icon}</Typography>
+                      <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, flex: 1 }}>{g.name}</Typography>
+                      <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: g.color }}>{pct}%</Typography>
+                    </Box>
+                    <LinearProgress variant="determinate" value={pct}
+                      sx={{ height: 5, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)',
+                        '& .MuiLinearProgress-bar': { bgcolor: g.color, borderRadius: 3 } }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.4 }}>
+                      <Typography sx={{ fontSize: '0.58rem', color: KZ.t3 }}>{formatBRL(g.current)}</Typography>
+                      <Typography sx={{ fontSize: '0.58rem', color: KZ.t3 }}>{formatBRL(g.target)}</Typography>
+                    </Box>
                   </Box>
-                  <LinearProgress variant="determinate" value={pct}
-                    sx={{ height: 5, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)',
-                      '& .MuiLinearProgress-bar': { bgcolor: g.color, borderRadius: 3 } }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.4 }}>
-                    <Typography sx={{ fontSize: '0.58rem', color: KZ.t3 }}>{formatBRL(g.current)}</Typography>
-                    <Typography sx={{ fontSize: '0.58rem', color: KZ.t3 }}>{formatBRL(g.target)}</Typography>
-                  </Box>
-                </Box>
-              )
-            })}
-          </Box>
+                )
+              })}
+            </Box>
+          ) : (
+            <Typography sx={{ fontSize: '0.78rem', color: KZ.t3 }}>Nenhuma meta criada ainda</Typography>
+          )}
         </Paper>
 
         {/* Score de saúde */}
@@ -320,20 +390,20 @@ export default function DashboardPage() {
           <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: KZ.t2, alignSelf: 'flex-start' }}>
             Saúde financeira
           </Typography>
-          <HealthScore score={demo.score} />
+          <HealthScore score={data.score} />
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
             {[
-              { label: 'Reserva emergência', score: 40, color: KZ.gold },
-              { label: 'Proporção dívidas', score: 75, color: KZ.green },
-              { label: 'Disciplina orçamento', score: 80, color: KZ.green },
-              { label: 'Taxa de poupança', score: 55, color: KZ.gold },
+              { label: 'Reserva emergência', score: data.totalBalance > 0 ? 40 : 0, color: data.totalBalance > 0 ? KZ.gold : KZ.red },
+              { label: 'Proporção dívidas',  score: 75, color: KZ.green },
+              { label: 'Disciplina orçamento', score: data.monthExpense <= data.monthIncome ? 80 : 30, color: data.monthExpense <= data.monthIncome ? KZ.green : KZ.red },
+              { label: 'Taxa de poupança', score: data.monthIncome > 0 ? Math.min(100, Math.round(((data.monthIncome - data.monthExpense) / data.monthIncome) * 100)) : 0, color: KZ.gold },
             ].map(item => (
               <Box key={item.label}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
                   <Typography sx={{ fontSize: '0.6rem', color: KZ.t3 }}>{item.label}</Typography>
                   <Typography sx={{ fontSize: '0.6rem', color: item.color, fontWeight: 700 }}>{item.score}/100</Typography>
                 </Box>
-                <LinearProgress variant="determinate" value={item.score}
+                <LinearProgress variant="determinate" value={Math.max(0, Math.min(100, item.score))}
                   sx={{ height: 3, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.06)',
                     '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 2 } }} />
               </Box>
@@ -358,13 +428,13 @@ export default function DashboardPage() {
         </Box>
         <Typography sx={{ fontSize: '0.75rem', color: KZ.t3 }}>
           Com base nas suas contas e receitas programadas, seu saldo projetado em 30 dias é{' '}
-          <Typography component="span" sx={{ color: KZ.green, fontWeight: 700 }}>{formatBRL(balance + cashflow * 0.8)}</Typography>.
-          {' '}Nenhum mês crítico detectado no horizonte.
+          <Typography component="span" sx={{ color: KZ.green, fontWeight: 700 }}>{formatBRL(data.totalBalance + cashflow * 0.8)}</Typography>.
+          {' '}{data.overdueBills > 0 ? `⚠️ Você tem ${data.overdueBills} conta${data.overdueBills > 1 ? 's' : ''} em atraso.` : 'Nenhum mês crítico detectado no horizonte.'}
         </Typography>
       </Paper>
 
       {/* ── IA Financeira ── */}
-      <AIAnalysisPanel financialData={demo} />
+      <AIAnalysisPanel financialData={data} />
 
     </Box>
   )

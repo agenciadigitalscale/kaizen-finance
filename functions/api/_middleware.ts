@@ -4,7 +4,9 @@
 export interface Env {
   DB: D1Database
   JWT_SECRET: string
+  ANTHROPIC_API_KEY?: string
   STRIPE_SECRET_KEY?: string
+  STRIPE_WEBHOOK_SECRET?: string
   RESEND_API_KEY?: string
   WHATSAPP_TOKEN?: string
 }

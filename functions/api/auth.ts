@@ -60,8 +60,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const householdId = crypto.randomUUID()
     const pwHash      = await hashPassword(password)
 
-    const accountId = crypto.randomUUID()
-
     await env.DB.batch([
       env.DB.prepare('INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)')
         .bind(userId, email, name, pwHash),
@@ -69,9 +67,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
         .bind(householdId, householdName),
       env.DB.prepare('INSERT INTO household_members (household_id, user_id, role, name, color) VALUES (?, ?, ?, ?, ?)')
         .bind(householdId, userId, 'owner', name, MEMBER_COLORS[0]),
-      // Conta corrente padrão
-      env.DB.prepare('INSERT INTO accounts (id, household_id, name, type, balance, color, icon, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(accountId, householdId, 'Conta Principal', 'checking', 0, '#10B981', '🏦', 1),
     ])
 
     const accessToken  = await signJWT({ sub: userId, householdId, role: 'owner' }, env.JWT_SECRET, 15 * 60)
