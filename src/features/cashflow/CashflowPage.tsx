@@ -10,44 +10,49 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts'
+import { useIsDemo }            from '@/features/auth/authStore'
+import { useAccountsStore }     from '@/shared/stores/accountsStore'
+import { useBillsStore }        from '@/shared/stores/billsStore'
+import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import type { Bill, Transaction, Account } from '@/types'
 import { KZ } from '@/theme'
 import { formatBRL } from '@/types'
 
-// ── Simulate cash flow for next N days ────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface CashEvent {
-  name:  string
+  name:   string
   amount: number
-  type:  'bill' | 'income' | 'transfer'
+  type:   'bill' | 'income' | 'transfer'
 }
 
 interface DayForecast {
-  date:     string
-  label:    string
-  balance:  number
-  events:   CashEvent[]
-  isNeg:    boolean
-  isToday:  boolean
+  date:    string
+  label:   string
+  balance: number
+  events:  CashEvent[]
+  isNeg:   boolean
+  isToday: boolean
 }
 
-function generateForecast(days: number): DayForecast[] {
-  const startBalance = 12548000 // R$ 12.548,00
+// ── Demo forecast (static) ────────────────────────────────────────────────────
+function generateDemoForecast(days: number): DayForecast[] {
+  const startBalance = 12548000
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   const RECURRING: { day: number; name: string; amount: number; type: 'bill' | 'income' }[] = [
-    { day: 1,  name: 'Salário',         amount:  850000, type: 'income' },
-    { day: 5,  name: 'Internet Vivo',   amount:  -11990, type: 'bill'   },
-    { day: 8,  name: 'Energia',         amount:  -23400, type: 'bill'   },
-    { day: 10, name: 'Cartão Nubank',   amount: -125000, type: 'bill'   },
-    { day: 15, name: 'Netflix',         amount:   -5490, type: 'bill'   },
-    { day: 18, name: 'Academia',        amount:   -8990, type: 'bill'   },
-    { day: 20, name: 'Spotify',         amount:   -2190, type: 'bill'   },
-    { day: 25, name: 'IPTU (parcela)',  amount:  -45000, type: 'bill'   },
-    { day: 1,  name: 'Aluguel',         amount: -180000, type: 'bill'   },
-    { day: 28, name: 'Meta: Emergência', amount: -100000, type: 'bill'  },
+    { day:  1, name: 'Salário',          amount:  850000, type: 'income' },
+    { day:  1, name: 'Aluguel',          amount: -180000, type: 'bill'   },
+    { day:  5, name: 'Internet Vivo',    amount:  -11990, type: 'bill'   },
+    { day:  8, name: 'Energia',          amount:  -23400, type: 'bill'   },
+    { day: 10, name: 'Cartão Nubank',    amount: -125000, type: 'bill'   },
+    { day: 15, name: 'Netflix',          amount:   -5490, type: 'bill'   },
+    { day: 18, name: 'Academia',         amount:   -8990, type: 'bill'   },
+    { day: 20, name: 'Spotify',          amount:   -2190, type: 'bill'   },
+    { day: 25, name: 'IPTU (parcela)',   amount:  -45000, type: 'bill'   },
+    { day: 28, name: 'Meta: Emergência', amount: -100000, type: 'bill'   },
   ]
-
-  const DAILY_SPEND = 2200 // média diária de gastos menores
+  const DAILY_SPEND = 2200
 
   const result: DayForecast[] = []
   let balance = startBalance
@@ -57,33 +62,97 @@ function generateForecast(days: number): DayForecast[] {
     d.setDate(d.getDate() + i)
     const dom = d.getDate()
     const isToday = i === 0
-
     const events: CashEvent[] = []
     let dayDelta = -DAILY_SPEND
 
-    RECURRING.forEach(r => {
+    for (const r of RECURRING) {
       if (r.day === dom) {
         events.push({ name: r.name, amount: r.amount, type: r.type })
         dayDelta += r.amount
       }
-    })
+    }
 
     balance += dayDelta
-    const label = isToday
-      ? 'Hoje'
-      : i === 1
-        ? 'Amanhã'
-        : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-
-    result.push({
-      date:    d.toISOString().slice(0, 10),
-      label,
-      balance,
-      events,
-      isNeg:   balance < 0,
-      isToday,
-    })
+    const label = isToday ? 'Hoje' : i === 1 ? 'Amanhã' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    result.push({ date: d.toISOString().slice(0, 10), label, balance, events, isNeg: balance < 0, isToday })
   }
+  return result
+}
+
+// ── Real forecast (from stores) ───────────────────────────────────────────────
+function generateRealForecast(
+  days: number,
+  accounts: Account[],
+  bills: Bill[],
+  transactions: Transaction[],
+): DayForecast[] {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayStr = today.toISOString().slice(0, 10)
+
+  const startBalance = accounts.reduce((s, a) => s + a.balance, 0)
+
+  // Average daily expense from last 30 days
+  const thirtyAgo = new Date(today)
+  thirtyAgo.setDate(thirtyAgo.getDate() - 30)
+  const thirtyAgoStr = thirtyAgo.toISOString().slice(0, 10)
+  const recentExpense = transactions
+    .filter(t => t.type === 'expense' && t.status === 'confirmed' && t.date >= thirtyAgoStr)
+    .reduce((s, t) => s + t.amount, 0)
+  const dailyAvg = Math.max(Math.round(recentExpense / 30), 500) // min R$ 5/day
+
+  // Build event map: dateStr → events[]
+  const eventMap: Record<string, CashEvent[]> = {}
+  const addEvent = (date: string, ev: CashEvent) => {
+    if (!eventMap[date]) eventMap[date] = []
+    eventMap[date].push(ev)
+  }
+
+  const unpaidBills = bills.filter(b => b.status !== 'paid')
+  const maxMonths = Math.ceil(days / 28) + 1
+
+  for (const bill of unpaidBills) {
+    if (!bill.dueDate) continue
+    const billD = new Date(bill.dueDate)
+    billD.setHours(0, 0, 0, 0)
+
+    // Add on the actual due date (if within horizon)
+    const dateStr = bill.dueDate
+    if (dateStr >= todayStr) {
+      addEvent(dateStr, { name: bill.name, amount: -bill.amount, type: 'bill' })
+    }
+
+    // For monthly bills, project for subsequent months
+    if (bill.frequency === 'monthly') {
+      for (let m = 1; m <= maxMonths; m++) {
+        const projected = new Date(billD)
+        projected.setMonth(projected.getMonth() + m)
+        const projStr = projected.toISOString().slice(0, 10)
+        if (projStr > todayStr) {
+          addEvent(projStr, { name: bill.name, amount: -bill.amount, type: 'bill' })
+        }
+      }
+    }
+  }
+
+  const result: DayForecast[] = []
+  let balance = startBalance
+
+  for (let i = 0; i < days; i++) {
+    const d = new Date(today)
+    d.setDate(d.getDate() + i)
+    const dateStr = d.toISOString().slice(0, 10)
+    const isToday = i === 0
+    const events = eventMap[dateStr] ?? []
+
+    // Bill events already deducted via eventMap; add daily average on top
+    const billsDelta = events.reduce((s, e) => s + e.amount, 0)
+    balance += billsDelta - dailyAvg
+
+    const label = isToday ? 'Hoje' : i === 1 ? 'Amanhã' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    result.push({ date: dateStr, label, balance, events, isNeg: balance < 0, isToday })
+  }
+
   return result
 }
 
@@ -97,14 +166,12 @@ function CashTooltip({ active, payload, label }: {
   return (
     <Box sx={{ bgcolor: 'rgba(8,12,18,0.97)', border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 2, p: 1.5 }}>
       <Typography sx={{ fontSize: '0.62rem', color: KZ.t3, mb: 0.5 }}>{label}</Typography>
-      <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color }}>
-        {formatBRL(val)}
-      </Typography>
+      <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color }}>{formatBRL(val)}</Typography>
     </Box>
   )
 }
 
-// ── Day row (event list) ──────────────────────────────────────────────────────
+// ── Day row ───────────────────────────────────────────────────────────────────
 function DayRow({ day }: { day: DayForecast }) {
   if (day.events.length === 0) return null
   return (
@@ -123,9 +190,7 @@ function DayRow({ day }: { day: DayForecast }) {
       </Box>
       {day.events.map((ev, i) => (
         <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.3 }}>
-          <Typography sx={{ fontSize: '0.7rem' }}>
-            {ev.type === 'income' ? '📈' : '📤'}
-          </Typography>
+          <Typography sx={{ fontSize: '0.7rem' }}>{ev.type === 'income' ? '📈' : '📤'}</Typography>
           <Typography sx={{ fontSize: '0.72rem', flex: 1, color: KZ.t2 }}>{ev.name}</Typography>
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: ev.amount > 0 ? KZ.green : KZ.red }}>
             {ev.amount > 0 ? '+' : ''}{formatBRL(Math.abs(ev.amount))}
@@ -138,20 +203,27 @@ function DayRow({ day }: { day: DayForecast }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CashflowPage() {
+  const isDemo       = useIsDemo()
+  const accounts     = useAccountsStore(s => s.accounts)
+  const bills        = useBillsStore(s => s.bills)
+  const transactions = useTransactionsStore(s => s.transactions)
+
   const [horizon, setHorizon] = useState<30 | 60 | 90>(30)
 
-  const forecast = useMemo(() => generateForecast(horizon), [horizon])
+  const forecast = useMemo(
+    () => isDemo
+      ? generateDemoForecast(horizon)
+      : generateRealForecast(horizon, accounts, bills, transactions),
+    [isDemo, horizon, accounts, bills, transactions],
+  )
 
-  const negDays   = forecast.filter(d => d.isNeg)
-  const minDay    = forecast.reduce((m, d) => d.balance < m.balance ? d : m, forecast[0])
-  const firstNeg  = negDays[0]
-  const endBal    = forecast[forecast.length - 1].balance
-  const peakBal   = Math.max(...forecast.map(d => d.balance))
-
-  const chartMin  = Math.min(...forecast.map(d => d.balance)) * 1.05
-  const chartMax  = Math.max(...forecast.map(d => d.balance)) * 1.05
-
-  // Chart data — show every 3rd day to avoid clutter
+  const negDays  = forecast.filter(d => d.isNeg)
+  const minDay   = forecast.reduce((m, d) => d.balance < m.balance ? d : m, forecast[0])
+  const firstNeg = negDays[0]
+  const endBal   = forecast[forecast.length - 1]?.balance ?? 0
+  const peakBal  = Math.max(...forecast.map(d => d.balance))
+  const chartMin = Math.min(...forecast.map(d => d.balance)) * 1.05
+  const chartMax = Math.max(...forecast.map(d => d.balance)) * 1.05
   const chartData = forecast.filter((_, i) => i % (horizon <= 30 ? 2 : 3) === 0)
 
   return (
@@ -212,9 +284,9 @@ export default function CashflowPage() {
       {/* KPIs */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 3 }}>
         {[
-          { label: `Saldo em ${horizon} dias`, value: formatBRL(endBal), color: endBal >= 0 ? KZ.green : KZ.red },
-          { label: 'Menor saldo previsto',     value: formatBRL(minDay.balance), color: minDay.balance < 0 ? KZ.red : KZ.gold },
-          { label: 'Dias negativos',           value: String(negDays.length), color: negDays.length > 0 ? KZ.red : KZ.green },
+          { label: `Saldo em ${horizon} dias`, value: formatBRL(endBal),           color: endBal >= 0 ? KZ.green : KZ.red },
+          { label: 'Menor saldo previsto',     value: formatBRL(minDay?.balance ?? 0), color: (minDay?.balance ?? 0) < 0 ? KZ.red : KZ.gold },
+          { label: 'Dias negativos',           value: String(negDays.length),       color: negDays.length > 0 ? KZ.red : KZ.green },
         ].map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
             <Paper sx={{ p: 2, border: `1px solid ${kpi.color}18`, background: `linear-gradient(135deg, ${kpi.color}06 0%, transparent 100%)` }}>
@@ -241,22 +313,13 @@ export default function CashflowPage() {
                   <stop offset="0%" stopColor={KZ.green} stopOpacity={0.25} />
                   <stop offset="100%" stopColor={KZ.green} stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="cashGradNeg" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={KZ.red} stopOpacity={0.15} />
-                  <stop offset="100%" stopColor={KZ.red} stopOpacity={0} />
-                </linearGradient>
               </defs>
               <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: KZ.t3, fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis hide domain={[chartMin, chartMax]} />
               <RTooltip content={<CashTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.08)' }} />
               <ReferenceLine y={0} stroke="rgba(239,68,68,0.3)" strokeDasharray="4 4" />
-              <Area
-                type="monotone" dataKey="balance" name="Saldo"
-                stroke={KZ.green} strokeWidth={2}
-                fill="url(#cashGradPos)"
-                dot={false}
-              />
+              <Area type="monotone" dataKey="balance" name="Saldo" stroke={KZ.green} strokeWidth={2} fill="url(#cashGradPos)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </Box>
@@ -266,7 +329,7 @@ export default function CashflowPage() {
             <Typography sx={{ fontSize: '0.6rem', color: KZ.t3 }}>Saldo positivo</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 12, height: 1, bgcolor: KZ.red, borderRadius: 1, borderTop: `1px dashed ${KZ.red}` }} />
+            <Box sx={{ width: 12, height: 1, bgcolor: KZ.red, borderRadius: 1 }} />
             <Typography sx={{ fontSize: '0.6rem', color: KZ.t3 }}>Linha zero</Typography>
           </Box>
         </Box>
@@ -286,9 +349,7 @@ export default function CashflowPage() {
           {forecast
             .filter(d => d.events.length > 0)
             .slice(0, 20)
-            .map(day => (
-              <DayRow key={day.date} day={day} />
-            ))
+            .map(day => <DayRow key={day.date} day={day} />)
           }
         </Box>
       </Paper>
