@@ -57,9 +57,6 @@ export const useIsOwner   = () => useAuthStore(s => s.role === 'owner')
 export const useIsDemo    = () => useAuthStore(s => s.accessToken === 'demo-token')
 
 // Helper for stores (non-hook, callable outside React)
-export const getIsDemo    = () => {
-  const token = useAuthStore.getState().accessToken
-  return !token || token === 'demo-token'
-}
+export const getIsDemo    = () => useAuthStore.getState().accessToken === 'demo-token'
 export const getHouseholdId = () => useAuthStore.getState().household?.id ?? 'h1'
 export const getUserId      = () => useAuthStore.getState().user?.id ?? 'u1'

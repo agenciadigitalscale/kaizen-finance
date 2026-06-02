@@ -15,6 +15,7 @@ import CreditCardIcon     from '@mui/icons-material/CreditCard'
 import RadarIcon          from '@mui/icons-material/Radar'
 import LogoutIcon         from '@mui/icons-material/Logout'
 import { useAuthStore, useUser, useHousehold, useIsDemo } from '@/features/auth/authStore'
+import { api } from '@/shared/lib/api'
 import { useBillsStore }        from '@/shared/stores/billsStore'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
 import { useAccountsStore }     from '@/shared/stores/accountsStore'
@@ -187,6 +188,7 @@ function StoreInitializer() {
   const isDemo   = useIsDemo()
   const user     = useUser()
   const navigate = useNavigate()
+  const logout   = useAuthStore(s => s.logout)
   const accounts       = useAccountsStore(s => s.accounts)
   const initBills        = useBillsStore(s => s.init)
   const initTransactions = useTransactionsStore(s => s.init)
@@ -198,6 +200,17 @@ function StoreInitializer() {
   useEffect(() => {
     if (!user || isDemo) return
     void (async () => {
+      // On page reload the access token lives only in memory — refresh it before initializing stores
+      if (!useAuthStore.getState().accessToken) {
+        type RefreshRes = { ok: boolean; data?: { accessToken: string } }
+        const res = await api.auth.refresh().catch(() => null) as RefreshRes | null
+        if (res?.ok && res.data?.accessToken) {
+          useAuthStore.getState().setToken(res.data.accessToken)
+        } else {
+          logout()
+          return
+        }
+      }
       await Promise.all([
         initAccounts(), initBills(), initTransactions(),
         initGoals(), initBudget(), initPatrimony(),

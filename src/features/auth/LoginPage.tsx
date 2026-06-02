@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Box, Typography, TextField, Button, CircularProgress, Alert, Tab, Tabs } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from './authStore'
@@ -21,9 +21,10 @@ interface AuthResponse {
 }
 
 export default function LoginPage() {
-  const navigate   = useNavigate()
-  const setAuth    = useAuthStore(s => s.setAuth)
-  const [mode, setMode]         = useState<Mode>('login')
+  const navigate        = useNavigate()
+  const [searchParams]  = useSearchParams()
+  const setAuth         = useAuthStore(s => s.setAuth)
+  const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'signup' ? 'signup' : 'login')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
   const [form, setForm]         = useState({ name: '', email: '', password: '', householdName: '' })

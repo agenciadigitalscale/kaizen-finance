@@ -591,7 +591,7 @@ function Footer() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const navigate = useNavigate()
-  const handleCTA = () => navigate('/login')
+  const handleCTA = () => navigate('/login?mode=signup')
 
   return (
     <Box sx={{ bgcolor: KZ.bg, minHeight: '100vh', overflowX: 'hidden' }}>
