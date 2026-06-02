@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── /api/auth/* — Login, Signup, Refresh, Logout ────────────────────────────
 
-import type { Env } from './_middleware'
+import type { Env } from '../_middleware'
 
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16))
@@ -50,7 +50,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   // ── POST /api/auth/signup ────────────────────────────────────────────────────
   if (action === 'signup') {
     const { name, email, password, householdName } = body
-    if (!name || !email || !password || !householdName)
+    if (!name || !email || !password)
       return json({ ok: false, error: 'Campos obrigatórios faltando' }, 400)
 
     const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
@@ -59,12 +59,13 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const userId      = crypto.randomUUID()
     const householdId = crypto.randomUUID()
     const pwHash      = await hashPassword(password)
+    const hName       = householdName?.trim() || name
 
     await env.DB.batch([
       env.DB.prepare('INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)')
         .bind(userId, email, name, pwHash),
       env.DB.prepare('INSERT INTO households (id, name) VALUES (?, ?)')
-        .bind(householdId, householdName),
+        .bind(householdId, hName),
       env.DB.prepare('INSERT INTO household_members (household_id, user_id, role, name, color) VALUES (?, ?, ?, ?, ?)')
         .bind(householdId, userId, 'owner', name, MEMBER_COLORS[0]),
     ])
@@ -79,9 +80,9 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return new Response(JSON.stringify({
       ok: true,
       data: {
-        user:        { id: userId, email, name, createdAt: Date.now() },
-        household:   { id: householdId, name: householdName, currency: 'BRL', createdAt: Date.now() },
-        role:        'owner',
+        user:      { id: userId, email, name },
+        household: { id: householdId, name: hName },
+        role:      'owner',
         accessToken,
       },
     }), {

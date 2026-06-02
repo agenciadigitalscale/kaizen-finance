@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from './_middleware'
+import type { Env } from '../_middleware'
 
 type Ctx = EventContext<Env, string, { userId: string; householdId: string; role: string }>
 
@@ -19,7 +19,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   const billId = action === 'pay' ? prev : id
   const method = request.method
 
-  // GET /api/bills
   if (!id && !action && method === 'GET') {
     const rows = await env.DB.prepare(
       'SELECT * FROM bills WHERE household_id = ? ORDER BY due_date ASC'
@@ -27,7 +26,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true, data: rows.results })
   }
 
-  // POST /api/bills
   if (!id && !action && method === 'POST') {
     const b = await request.json() as Record<string, unknown>
     const nid = crypto.randomUUID()
@@ -43,7 +41,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true, data: { id: nid } }, 201)
   }
 
-  // POST /api/bills/:id/pay
   if (billId && action === 'pay' && method === 'POST') {
     const today = new Date().toISOString().slice(0, 10)
     await env.DB.prepare(
@@ -52,7 +49,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true })
   }
 
-  // PATCH /api/bills/:id
   if (id && method === 'PATCH') {
     const b = await request.json() as Record<string, unknown>
     const sets: string[] = []; const vals: unknown[] = []
@@ -70,7 +66,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true })
   }
 
-  // DELETE /api/bills/:id
   if (id && method === 'DELETE') {
     await env.DB.prepare('DELETE FROM bills WHERE id = ? AND household_id = ?').bind(id, householdId).run()
     return json({ ok: true })

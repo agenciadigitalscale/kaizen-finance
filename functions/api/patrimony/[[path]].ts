@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { Env } from './_middleware'
+import type { Env } from '../_middleware'
 
 type Ctx = EventContext<Env, string, { userId: string; householdId: string; role: string }>
 
@@ -16,7 +16,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   const prev   = parts[parts.length - 2]
   const method = request.method
 
-  // GET /api/patrimony — returns both assets and liabilities
   if (last === 'patrimony' && method === 'GET') {
     const [assets, liabilities] = await Promise.all([
       env.DB.prepare('SELECT * FROM assets WHERE household_id = ? ORDER BY current_value DESC').bind(householdId).all(),
@@ -25,7 +24,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true, data: { assets: assets.results, liabilities: liabilities.results } })
   }
 
-  // POST /api/patrimony/assets
   if (last === 'assets' && prev === 'patrimony' && method === 'POST') {
     const b = await request.json() as Record<string, unknown>
     const nid = crypto.randomUUID()
@@ -36,7 +34,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true, data: { id: nid } }, 201)
   }
 
-  // PATCH /api/patrimony/assets/:id
   if (prev === 'assets' && method === 'PATCH') {
     const id = last
     const b  = await request.json() as Record<string, unknown>
@@ -54,13 +51,11 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true })
   }
 
-  // DELETE /api/patrimony/assets/:id
   if (prev === 'assets' && method === 'DELETE') {
     await env.DB.prepare('DELETE FROM assets WHERE id = ? AND household_id = ?').bind(last, householdId).run()
     return json({ ok: true })
   }
 
-  // POST /api/patrimony/liabilities
   if (last === 'liabilities' && prev === 'patrimony' && method === 'POST') {
     const b = await request.json() as Record<string, unknown>
     const nid = crypto.randomUUID()
@@ -72,7 +67,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true, data: { id: nid } }, 201)
   }
 
-  // PATCH /api/patrimony/liabilities/:id
   if (prev === 'liabilities' && method === 'PATCH') {
     const id = last
     const b  = await request.json() as Record<string, unknown>
@@ -90,7 +84,6 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true })
   }
 
-  // DELETE /api/patrimony/liabilities/:id
   if (prev === 'liabilities' && method === 'DELETE') {
     await env.DB.prepare('DELETE FROM liabilities WHERE id = ? AND household_id = ?').bind(last, householdId).run()
     return json({ ok: true })
