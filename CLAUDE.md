@@ -4,11 +4,13 @@
 
 ---
 
-## Status do projeto (atualizado: 2026-06-01)
-🟢 Frontend 100% completo em modo demo
-🟢 Backend 100% implementado (Cloudflare Workers) — falta conectar ao frontend + deploy real
-🔴 Stripe integrado no backend, falta ativar plano de assinaturas no frontend
-🔴 LandingPage e OnboardingWizard existem mas não estão na rota pública
+## Status do projeto (atualizado: 2026-06-02)
+🟢 Frontend 100% completo — Dashboard, Reports, Cashflow conectados ao backend real
+🟢 Backend 100% implementado (Cloudflare Workers)
+🟢 LandingPage na rota `/` (CTA abre direto em "Criar conta")
+🟢 OnboardingWizard integrado ao fluxo de signup (redirect automático)
+🟢 Stores API-aware — todos os CRUDs chamam backend em modo real
+🟡 Stripe integrado no backend, falta ativar plano de assinaturas no frontend
 🔴 D1 database_id ainda é PLACEHOLDER — falta criar no Cloudflare e configurar
 
 ---
