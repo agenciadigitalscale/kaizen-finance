@@ -77,6 +77,15 @@ export const themeOptions: ThemeOptions = {
           '&::-webkit-scrollbar': { width: 4, height: 4 },
           '&::-webkit-scrollbar-thumb': { background: `rgba(16,185,129,0.25)`, borderRadius: 4 },
         },
+        // Acessibilidade/bateria: respeita "reduzir movimento" do sistema
+        '@media (prefers-reduced-motion: reduce)': {
+          '*, *::before, *::after': {
+            animationDuration: '0.001ms !important',
+            animationIterationCount: '1 !important',
+            transitionDuration: '0.001ms !important',
+            scrollBehavior: 'auto !important',
+          },
+        },
       },
     },
     MuiCard: {

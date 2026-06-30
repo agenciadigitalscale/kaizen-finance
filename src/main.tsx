@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import { CssBaseline } from '@mui/material'
+import { MotionConfig } from 'framer-motion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.tsx'
@@ -19,9 +20,12 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <QueryClientProvider client={queryClient}>
-          <App />
-        </QueryClientProvider>
+        {/* reducedMotion="user" — framer-motion respeita "reduzir movimento" do sistema */}
+        <MotionConfig reducedMotion="user">
+          <QueryClientProvider client={queryClient}>
+            <App />
+          </QueryClientProvider>
+        </MotionConfig>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,
