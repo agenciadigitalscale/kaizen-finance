@@ -5,6 +5,29 @@ import { api } from '@/shared/lib/api'
 import { mapBill } from '@/shared/lib/mappers'
 import { getIsDemo, getHouseholdId } from '@/features/auth/authStore'
 
+// Avança a data para o próximo vencimento conforme a frequência (preserva o dia, com clamp)
+function addMonths(date: Date, n: number) {
+  const day = date.getDate()
+  date.setDate(1)
+  date.setMonth(date.getMonth() + n)
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  date.setDate(Math.min(day, daysInMonth))
+}
+function nextDueDate(dueDate: string, frequency: Bill['frequency']): string {
+  const [y, m, d] = dueDate.split('-').map(Number)
+  const base = new Date(y, m - 1, d)
+  switch (frequency) {
+    case 'weekly':    base.setDate(base.getDate() + 7); break
+    case 'monthly':   addMonths(base, 1); break
+    case 'bimonthly': addMonths(base, 2); break
+    case 'quarterly': addMonths(base, 3); break
+    case 'yearly':    addMonths(base, 12); break
+    default:          return dueDate // 'once' não recorre
+  }
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`
+}
+
 const INITIAL_BILLS: Bill[] = [
   { id: '1', householdId: 'h1', name: 'Aluguel', amount: 180000, dueDate: '2026-06-01', frequency: 'monthly', categoryId: 'moradia', status: 'pending', isShared: true, reminderDays: 3, whatsappAlert: true, whatsappNumber: '11999999999', createdAt: 0 },
   { id: '2', householdId: 'h1', name: 'Internet Vivo', amount: 11990, dueDate: '2026-06-05', frequency: 'monthly', categoryId: 'assinatura', status: 'pending', isShared: true, reminderDays: 2, whatsappAlert: false, createdAt: 0 },
@@ -75,10 +98,26 @@ export const useBillsStore = create<BillsState>()(
 
       payBill: (id) => {
         const today = new Date().toISOString().slice(0, 10)
+        let recurred = false
         set(s => ({
-          bills: s.bills.map(b => b.id === id ? { ...b, status: 'paid', paidAt: today } : b),
+          bills: s.bills.map(b => {
+            if (b.id !== id) return b
+            if (b.frequency !== 'once') {
+              // Conta recorrente: rola para o próximo vencimento e volta a "pendente"
+              recurred = true
+              return { ...b, dueDate: nextDueDate(b.dueDate, b.frequency), status: 'pending', paidAt: today }
+            }
+            return { ...b, status: 'paid', paidAt: today }
+          }),
         }))
-        if (!getIsDemo()) api.bills.pay(id).catch(console.error)
+        if (!getIsDemo()) {
+          if (recurred) {
+            const bill = useBillsStore.getState().bills.find(b => b.id === id)
+            if (bill) api.bills.update(id, { dueDate: bill.dueDate, status: 'pending', paidAt: today }).catch(console.error)
+          } else {
+            api.bills.pay(id).catch(console.error)
+          }
+        }
       },
     }),
     { name: 'kz-bills' }

@@ -14,7 +14,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   const parts  = url.pathname.replace(/\/$/, '').split('/')
   const last   = parts[parts.length - 1]
   const prev   = parts[parts.length - 2]
-  const id     = last !== 'bills' && last !== 'pay' ? (prev !== 'bills' ? last : null) : null
+  const id     = last !== 'bills' && last !== 'pay' ? last : null
   const action = last === 'pay' ? 'pay' : null
   const billId = action === 'pay' ? prev : id
   const method = request.method
@@ -55,7 +55,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const map: Record<string, string> = {
       name: 'name', amount: 'amount', dueDate: 'due_date', frequency: 'frequency',
       categoryId: 'category_id', accountId: 'account_id', status: 'status',
-      isShared: 'is_shared', reminderDays: 'reminder_days',
+      isShared: 'is_shared', reminderDays: 'reminder_days', paidAt: 'paid_at',
       whatsappAlert: 'whatsapp_alert', whatsappNumber: 'whatsapp_number', notes: 'notes',
     }
     for (const [k, col] of Object.entries(map)) {
