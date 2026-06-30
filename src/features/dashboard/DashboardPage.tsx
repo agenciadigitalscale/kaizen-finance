@@ -447,7 +447,8 @@ export default function DashboardPage() {
 
     const subsMap = new Map<string, number>()
     for (const t of transactions) {
-      if (t.isRecurring && t.type === 'expense' && !subsMap.has(t.description)) subsMap.set(t.description, t.amount)
+      // Conta recorrente de moradia (aluguel/financiamento) não é "assinatura"
+      if (t.isRecurring && t.type === 'expense' && t.categoryId !== 'moradia' && !subsMap.has(t.description)) subsMap.set(t.description, t.amount)
     }
     if (subsMap.size > 0) {
       const total = [...subsMap.values()].reduce((s, a) => s + a, 0)
