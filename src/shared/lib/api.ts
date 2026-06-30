@@ -106,6 +106,11 @@ export const api = {
     analyze: (financialData: unknown, question?: string) => request('/api/ai', { method: 'POST', body: JSON.stringify({ financialData, question }) }),
   },
 
+  account: {
+    updateProfile: (data: { name: string; householdName?: string }) => request('/api/account/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+    changePassword: (currentPassword: string, newPassword: string) => request('/api/account/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+  },
+
   voice: {
     parse: (transcript: string) => request('/api/voice', { method: 'POST', body: JSON.stringify({ transcript }) }),
   },

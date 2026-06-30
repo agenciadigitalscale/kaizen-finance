@@ -21,6 +21,7 @@ interface AuthState {
 
   setAuth: (user: AuthUser, household: AuthHousehold, role: string, token: string) => void
   setToken: (token: string) => void
+  patchProfile: (name: string, householdName?: string) => void
   logout:  () => void
 }
 
@@ -36,6 +37,11 @@ export const useAuthStore = create<AuthState>()(
         set({ user, household, role, accessToken: token }),
 
       setToken: (token) => set({ accessToken: token }),
+
+      patchProfile: (name, householdName) => set(s => ({
+        user: s.user ? { ...s.user, name } : null,
+        household: (householdName && s.household) ? { ...s.household, name: householdName } : s.household,
+      })),
 
       logout: () => {
         // Limpa dados persistidos dos stores para demo e real nunca se misturarem

@@ -14,6 +14,7 @@ import WaterfallChartIcon from '@mui/icons-material/WaterfallChart'
 import CreditCardIcon     from '@mui/icons-material/CreditCard'
 import RadarIcon          from '@mui/icons-material/Radar'
 import GroupsIcon         from '@mui/icons-material/Groups'
+import SettingsIcon       from '@mui/icons-material/Settings'
 import LogoutIcon         from '@mui/icons-material/Logout'
 import { useAuthStore, useUser, useHousehold, useIsDemo } from '@/features/auth/authStore'
 import { api } from '@/shared/lib/api'
@@ -37,6 +38,7 @@ import CashflowPage         from '@/features/cashflow/CashflowPage'
 import AccountsPage         from '@/features/accounts/AccountsPage'
 import SubscriptionsPage    from '@/features/subscriptions/SubscriptionsPage'
 import FamilyPage           from '@/features/family/FamilyPage'
+import SettingsPage         from '@/features/settings/SettingsPage'
 import QuickLaunchSheet     from '@/shared/components/QuickLaunchSheet'
 import MobileBottomNav      from '@/shared/components/MobileBottomNav'
 import BrandMark            from '@/shared/components/BrandMark'
@@ -55,6 +57,7 @@ const NAV = [
   { label: 'Minhas contas',      icon: <CreditCardIcon />,      path: '/app/accounts' },
   { label: 'Assinaturas',        icon: <RadarIcon />,           path: '/app/subscriptions' },
   { label: 'Família',            icon: <GroupsIcon />,          path: '/app/family' },
+  { label: 'Configurações',      icon: <SettingsIcon />,        path: '/app/settings' },
 ]
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -174,6 +177,7 @@ function AppShell() {
                 <Route path="/accounts"      element={<AccountsPage />} />
                 <Route path="/subscriptions" element={<SubscriptionsPage />} />
                 <Route path="/family"        element={<FamilyPage />} />
+                <Route path="/settings"      element={<SettingsPage />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
