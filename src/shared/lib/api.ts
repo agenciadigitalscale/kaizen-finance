@@ -113,6 +113,10 @@ export const api = {
     changePassword: (currentPassword: string, newPassword: string) => request('/api/account/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   },
 
+  whatsapp: {
+    test: (phone: string, message?: string) => request('/api/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone, message }) }),
+  },
+
   voice: {
     parse: (transcript: string) => request('/api/voice', { method: 'POST', body: JSON.stringify({ transcript }) }),
   },

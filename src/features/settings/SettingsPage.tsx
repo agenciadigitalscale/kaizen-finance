@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PersonIcon   from '@mui/icons-material/Person'
 import LockIcon     from '@mui/icons-material/Lock'
+import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import { KZ, KZ_GRADIENTS } from '@/theme'
 import { useUser, useHousehold, useIsDemo, useAuthStore } from '@/features/auth/authStore'
 import { api } from '@/shared/lib/api'
@@ -35,6 +36,23 @@ export default function SettingsPage() {
   const [confPw, setConfPw] = useState('')
   const [pwMsg, setPwMsg]   = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [pwLoading, setPwL] = useState(false)
+
+  const [waPhone, setWaPhone] = useState('')
+  const [waMsg, setWaMsg]     = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [waLoading, setWaL]   = useState(false)
+
+  async function testWhatsApp() {
+    setWaMsg(null)
+    if (isDemo) { setWaMsg({ type: 'error', text: 'Indisponível no modo demo.' }); return }
+    if (!waPhone.trim()) { setWaMsg({ type: 'error', text: 'Informe seu número com DDD.' }); return }
+    setWaL(true)
+    try {
+      const res = await api.whatsapp.test(waPhone.trim()) as { ok: boolean; error?: string }
+      if (res.ok) setWaMsg({ type: 'success', text: 'Mensagem enviada! Confira seu WhatsApp.' })
+      else setWaMsg({ type: 'error', text: res.error ?? 'Falha ao enviar.' })
+    } catch { setWaMsg({ type: 'error', text: 'Erro de conexão.' }) }
+    finally { setWaL(false) }
+  }
 
   async function saveProfile() {
     setProfileMsg(null)
@@ -114,6 +132,29 @@ export default function SettingsPage() {
         </Button>
         <Typography sx={{ fontSize: '0.66rem', color: KZ.t3, mt: 1.5 }}>
           Por segurança, ao trocar a senha você será desconectado dos outros dispositivos.
+        </Typography>
+      </Paper>
+
+      {/* WhatsApp */}
+      <Paper sx={{ p: 2.5, mt: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <WhatsAppIcon sx={{ fontSize: 18, color: '#25D366' }} />
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700 }}>Alertas no WhatsApp</Typography>
+        </Box>
+        <Typography sx={{ fontSize: '0.74rem', color: KZ.t2, mb: 2, lineHeight: 1.5 }}>
+          Avise antes de cada vencimento direto no seu WhatsApp. Envie uma mensagem de teste para confirmar.
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+          <TextField label="Seu WhatsApp (com DDD)" size="small" fullWidth value={waPhone}
+            onChange={e => setWaPhone(e.target.value)} placeholder="11999999999" />
+          <Button variant="outlined" onClick={testWhatsApp} disabled={waLoading}
+            sx={{ borderColor: '#25D366', color: '#25D366', borderRadius: 2, fontWeight: 700, whiteSpace: 'nowrap', '&:hover': { borderColor: '#25D366', bgcolor: 'rgba(37,211,102,0.06)' } }}>
+            {waLoading ? 'Enviando…' : 'Testar'}
+          </Button>
+        </Box>
+        <Feedback msg={waMsg} />
+        <Typography sx={{ fontSize: '0.66rem', color: KZ.t3, mt: 1.5 }}>
+          Requer integração Z-API configurada no servidor. O envio automático antes do vencimento é ativado no lançamento.
         </Typography>
       </Paper>
     </Box>
