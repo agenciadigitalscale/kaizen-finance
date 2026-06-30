@@ -52,6 +52,8 @@ export const api = {
       request('/api/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
     logout:  () => request('/api/auth/logout', { method: 'POST' }),
     refresh: () => request('/api/auth/refresh', { method: 'POST' }),
+    forgot:  (email: string) => request('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
+    reset:   (token: string, password: string) => request('/api/auth/reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
   },
 
   dashboard: {

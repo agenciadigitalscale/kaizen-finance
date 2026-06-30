@@ -193,5 +193,63 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     })
   }
 
+  // ── POST /api/auth/forgot — solicitar redefinição de senha ───────────────────
+  if (action === 'forgot') {
+    const email = (body.email ?? '').toLowerCase().trim()
+    // Sempre responde ok para não revelar se o e-mail existe
+    if (!isValidEmail(email)) return json({ ok: true })
+
+    const user = await env.DB.prepare('SELECT id, name FROM users WHERE email = ?')
+      .bind(email).first<{ id: string; name: string }>()
+
+    if (user) {
+      const rawToken  = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '')
+      const tokenHash = await hashToken(rawToken)
+      await env.DB.prepare(
+        'INSERT INTO password_resets (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)'
+      ).bind(crypto.randomUUID(), user.id, tokenHash, Date.now() + 60 * 60 * 1000).run()
+
+      const link = `${url.origin}/reset?token=${rawToken}`
+      const resendKey = (env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY
+      if (resendKey) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'Kaizen Finance <onboarding@resend.dev>',
+              to: [email],
+              subject: 'Redefinir sua senha — Kaizen Finance',
+              html: `<div style="font-family:sans-serif;max-width:480px;margin:auto"><h2 style="color:#10B981">Redefinir senha</h2><p>Olá, ${user.name}. Recebemos um pedido para redefinir sua senha no Kaizen Finance.</p><p><a href="${link}" style="display:inline-block;background:#10B981;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700">Criar nova senha</a></p><p style="color:#888;font-size:13px">O link expira em 1 hora. Se não foi você, ignore este e-mail.</p></div>`,
+            }),
+          })
+        } catch { /* falha de e-mail não revela nada ao cliente */ }
+      }
+    }
+    return json({ ok: true })
+  }
+
+  // ── POST /api/auth/reset — redefinir senha com token ─────────────────────────
+  if (action === 'reset') {
+    const { token, password } = body
+    if (!token || !password) return json({ ok: false, error: 'Token e nova senha obrigatórios' }, 400)
+    if (password.length < 8) return json({ ok: false, error: 'A senha deve ter no mínimo 8 caracteres' }, 400)
+
+    const tokenHash = await hashToken(token)
+    const row = await env.DB.prepare(
+      'SELECT id, user_id FROM password_resets WHERE token_hash = ? AND used = 0 AND expires_at > ?'
+    ).bind(tokenHash, Date.now()).first<{ id: string; user_id: string }>()
+
+    if (!row) return json({ ok: false, error: 'Link inválido ou expirado' }, 400)
+
+    const newHash = await hashPassword(password)
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, row.user_id),
+      env.DB.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').bind(row.id),
+      env.DB.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').bind(row.user_id),
+    ])
+    return json({ ok: true })
+  }
+
   return json({ ok: false, error: 'Rota não encontrada' }, 404)
 }

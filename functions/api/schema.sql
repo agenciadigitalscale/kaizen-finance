@@ -42,6 +42,16 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   created_at   INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
 
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE INDEX IF NOT EXISTS idx_pwreset_token ON password_resets(token_hash);
+
 -- ── Categorias ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (
   id           TEXT PRIMARY KEY,

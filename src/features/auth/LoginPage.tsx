@@ -29,9 +29,17 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
   const [form, setForm]         = useState({ name: '', email: '', password: '', householdName: '' })
+  const [forgotMsg, setForgotMsg] = useState('')
 
   const update = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }))
+
+  async function handleForgot() {
+    if (!form.email) { setForgotMsg('Digite seu e-mail no campo acima primeiro.'); return }
+    setForgotMsg('Enviando…')
+    try { await api.auth.forgot(form.email) } catch { /* noop */ }
+    setForgotMsg('Se o e-mail estiver cadastrado, enviamos um link para redefinir a senha. Verifique sua caixa de entrada.')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -148,6 +156,18 @@ export default function LoginPage() {
               value={form.password} onChange={update('password')}
               onKeyDown={e => e.key === 'Enter' && handleSubmit(e as never)}
             />
+
+            {mode === 'login' && (
+              <Box sx={{ textAlign: 'right', mt: -0.8 }}>
+                <Typography component="span" onClick={handleForgot}
+                  sx={{ fontSize: '0.72rem', color: KZ.t2, cursor: 'pointer', '&:hover': { color: KZ.green } }}>
+                  Esqueci minha senha
+                </Typography>
+              </Box>
+            )}
+            {forgotMsg && mode === 'login' && (
+              <Typography sx={{ fontSize: '0.72rem', color: KZ.green, mt: -0.5 }}>{forgotMsg}</Typography>
+            )}
 
             {error && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

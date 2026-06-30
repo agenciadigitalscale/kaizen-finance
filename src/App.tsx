@@ -25,6 +25,7 @@ import { useGoalsStore }        from '@/shared/stores/goalsStore'
 import { useBudgetStore }       from '@/shared/stores/budgetStore'
 import { usePatrimonyStore }    from '@/shared/stores/patrimonyStore'
 import LoginPage            from '@/features/auth/LoginPage'
+import ResetPasswordPage    from '@/features/auth/ResetPasswordPage'
 import LandingPage          from '@/features/landing/LandingPage'
 import OnboardingWizard     from '@/features/onboarding/OnboardingWizard'
 import DashboardPage        from '@/features/dashboard/DashboardPage'
@@ -247,6 +248,7 @@ export default function AppRoot() {
       <Routes>
         <Route path="/"           element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
         <Route path="/login"      element={<LoginPage />} />
+        <Route path="/reset"      element={<ResetPasswordPage />} />
         <Route path="/onboarding" element={<RequireAuth><OnboardingWrapper /></RequireAuth>} />
         <Route path="/app/*"      element={<RequireAuth><AppShell /></RequireAuth>} />
         <Route path="*"           element={<Navigate to="/" replace />} />
