@@ -36,11 +36,21 @@ function GoalCard({ goal, onEdit, onDelete, onToggle, onSimulate }: {
   onToggle: (id: string) => void
   onSimulate: (g: Goal) => void
 }) {
-  const pct       = Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100)
+  const pct       = goal.targetAmount > 0 ? Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100) : 0
   const remaining = goal.targetAmount - goal.currentAmount
   const months    = monthsToGoal(remaining, goal.monthlyContribution)
   const isCompleted = goal.status === 'completed'
   const isPaused    = goal.status === 'paused'
+
+  // Atrasada / no prazo (só faz sentido para metas ativas com data alvo)
+  const isLate = goal.status === 'active' && !!goal.targetDate && goal.currentAmount < goal.targetAmount && (() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const target = new Date(goal.targetDate + 'T12:00')
+    if (target < today) return true
+    if (months != null) { const proj = new Date(); proj.setMonth(proj.getMonth() + months); return proj > target }
+    return false
+  })()
+  const onTrack = goal.status === 'active' && !!goal.targetDate && !isLate && goal.currentAmount < goal.targetAmount
 
   const targetDate = goal.targetDate
     ? new Date(goal.targetDate + 'T12:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
@@ -74,6 +84,8 @@ function GoalCard({ goal, onEdit, onDelete, onToggle, onSimulate }: {
               <Chip label={GOAL_TYPE_LABELS[goal.type]} size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: `${goal.color}10`, color: goal.color, border: `1px solid ${goal.color}25` }} />
               {isPaused && <Chip label="Pausado" size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: 'rgba(255,255,255,0.05)', color: KZ.t3 }} />}
               {isCompleted && <Chip label="Concluído ✓" size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: 'rgba(16,185,129,0.1)', color: KZ.green }} />}
+              {isLate && <Chip label="Atrasada" size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: 'rgba(239,68,68,0.12)', color: KZ.red, border: `1px solid rgba(239,68,68,0.3)` }} />}
+              {onTrack && <Chip label="No prazo" size="small" sx={{ height: 16, fontSize: '0.5rem', bgcolor: 'rgba(16,185,129,0.1)', color: KZ.green, border: `1px solid rgba(16,185,129,0.25)` }} />}
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 0.2, flexShrink: 0 }}>
@@ -343,11 +355,11 @@ export default function GoalsPage() {
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
             <Typography sx={{ fontSize: '0.65rem', color: KZ.t2 }}>
-              {Math.round((totals.accumulated / totals.target) * 100)}% do total das metas
+              {totals.target > 0 ? Math.round((totals.accumulated / totals.target) * 100) : 0}% do total das metas
             </Typography>
             <Typography sx={{ fontSize: '0.65rem', color: KZ.t2 }}>Meta total: {formatBRL(totals.target)}</Typography>
           </Box>
-          <LinearProgress variant="determinate" value={Math.min(Math.round((totals.accumulated / totals.target) * 100), 100)}
+          <LinearProgress variant="determinate" value={totals.target > 0 ? Math.min(Math.round((totals.accumulated / totals.target) * 100), 100) : 0}
             sx={{ height: 6, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.06)', '& .MuiLinearProgress-bar': { bgcolor: KZ.gold } }} />
         </Box>
       </Paper>
@@ -364,6 +376,24 @@ export default function GoalsPage() {
           }} />
         ))}
       </Box>
+
+      {/* Estado vazio */}
+      {filtered.length === 0 && (
+        <Paper sx={{ p: 4, textAlign: 'center', border: `1px dashed ${KZ.border}` }}>
+          <Typography sx={{ fontSize: '2.4rem' }}>🎯</Typography>
+          <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, mt: 1 }}>
+            {filter === 'all' ? 'Você ainda não criou nenhuma meta' : 'Nenhuma meta neste filtro'}
+          </Typography>
+          <Typography sx={{ fontSize: '0.78rem', color: KZ.t3, mt: 0.5, maxWidth: 320, mx: 'auto' }}>
+            Comece com uma reserva de emergência ou um objetivo importante — tipo uma viagem ou quitar uma dívida.
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />}
+            onClick={() => setDialog({ open: true, goal: EMPTY_GOAL })}
+            sx={{ mt: 2.5, background: KZ_GRADIENTS.green, borderRadius: 2, fontSize: '0.82rem' }}>
+            Criar primeira meta
+          </Button>
+        </Paper>
+      )}
 
       {/* Goals grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2,1fr)', xl: 'repeat(3,1fr)' }, gap: 2 }}>

@@ -283,6 +283,22 @@ export default function AccountsPage() {
         ))}
       </Box>
 
+      {/* Estado vazio */}
+      {accounts.length === 0 && (
+        <Paper sx={{ p: 4, textAlign: 'center', border: `1px dashed ${KZ.border}` }}>
+          <Typography sx={{ fontSize: '2.4rem' }}>🏦</Typography>
+          <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, mt: 1 }}>Nenhuma conta cadastrada</Typography>
+          <Typography sx={{ fontSize: '0.78rem', color: KZ.t3, mt: 0.5, maxWidth: 320, mx: 'auto' }}>
+            Adicione sua conta do banco, cartão de crédito, dinheiro ou investimentos para acompanhar seus saldos.
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />}
+            onClick={() => setDialog({ open: true, account: EMPTY })}
+            sx={{ mt: 2.5, background: KZ_GRADIENTS.green, borderRadius: 2, fontSize: '0.82rem' }}>
+            Adicionar primeira conta
+          </Button>
+        </Paper>
+      )}
+
       {/* Groups */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <AnimatePresence>

@@ -11,10 +11,15 @@ import { KZ, KZ_GRADIENTS } from '@/theme'
 import { useAccountsStore } from '@/shared/stores/accountsStore'
 import { useBillsStore } from '@/shared/stores/billsStore'
 import { useGoalsStore } from '@/shared/stores/goalsStore'
+import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import { useProfileStore, type HouseholdMode } from '@/shared/stores/profileStore'
 import type { AccountType } from '@/types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
 interface OnboardingState {
+  income:        string
+  mode:          HouseholdMode
+  partnerName:   string
   accountName:   string
   accountType:   AccountType
   accountBank:   string
@@ -28,6 +33,7 @@ interface OnboardingState {
 }
 
 const INIT: OnboardingState = {
+  income: '', mode: 'solo', partnerName: '',
   accountName: 'Conta Principal', accountType: 'checking', accountBank: 'Nubank', balance: '',
   billName: '', billAmount: '', billDueDate: '',
   goalName: '', goalTarget: '', goalMonthly: '',
@@ -35,9 +41,11 @@ const INIT: OnboardingState = {
 
 const STEPS = [
   { id: 'welcome',  title: 'Bem-vindo ao Kaizen!',  icon: '💹' },
+  { id: 'income',   title: 'Sua renda mensal',       icon: '💰' },
   { id: 'account',  title: 'Sua primeira conta',     icon: '🏦' },
   { id: 'bill',     title: 'Primeira conta a pagar', icon: '📋' },
   { id: 'goal',     title: 'Sua primeira meta',      icon: '🎯' },
+  { id: 'family',   title: 'Sozinho ou em família?', icon: '👨‍👩‍👧' },
   { id: 'done',     title: 'Tudo pronto!',           icon: '🎉' },
 ]
 
@@ -222,6 +230,73 @@ function StepGoal({ state, onChange, onNext, onSkip }: {
   )
 }
 
+// ── Step: Income ──────────────────────────────────────────────────────────────
+function StepIncome({ state, onChange, onNext, onSkip }: {
+  state: OnboardingState; onChange: (k: keyof OnboardingState, v: string) => void; onNext: () => void; onSkip: () => void
+}) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Typography sx={{ fontSize: '0.85rem', color: KZ.t2, lineHeight: 1.7 }}>
+        Quanto entra de dinheiro por mês? Pode ser salário, pró-labore ou renda média. Isso ajuda o Kaizen a calcular sua saúde financeira.
+      </Typography>
+      <TextField
+        label="Renda mensal (R$)" size="small" fullWidth value={state.income} autoFocus
+        onChange={e => onChange('income', e.target.value)} placeholder="0,00"
+        helperText="Você pode ajustar depois — fica entre você e o app."
+      />
+      <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
+        <Button variant="text" onClick={onSkip} sx={{ color: KZ.t3, flex: 0.5 }}>Pular</Button>
+        <Button variant="contained" onClick={onNext} endIcon={<ArrowForwardIcon />}
+          sx={{ background: KZ_GRADIENTS.green, borderRadius: 2, fontWeight: 700, flex: 1 }}>
+          Continuar
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
+// ── Step: Family ──────────────────────────────────────────────────────────────
+function StepFamily({ state, onChange, onNext }: {
+  state: OnboardingState; onChange: (k: keyof OnboardingState, v: string) => void; onNext: () => void
+}) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Typography sx={{ fontSize: '0.85rem', color: KZ.t2, lineHeight: 1.7 }}>
+        Você vai usar o Kaizen sozinho(a) ou junto com a família/parceiro(a)?
+      </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.2 }}>
+        {([
+          { value: 'solo',   icon: '🧑', label: 'Só eu',        desc: 'Controle individual' },
+          { value: 'family', icon: '👨‍👩‍👧', label: 'Em família', desc: 'Compartilhar com parceiro(a)' },
+        ] as const).map(opt => (
+          <Box key={opt.value} onClick={() => onChange('mode', opt.value)} sx={{
+            p: 2, borderRadius: 2.5, cursor: 'pointer', textAlign: 'center',
+            border: `1px solid ${state.mode === opt.value ? KZ.green : KZ.border}`,
+            bgcolor: state.mode === opt.value ? 'rgba(16,185,129,0.08)' : 'transparent', transition: 'all 0.15s',
+          }}>
+            <Typography sx={{ fontSize: '1.8rem' }}>{opt.icon}</Typography>
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: state.mode === opt.value ? KZ.green : KZ.t1, mt: 0.5 }}>{opt.label}</Typography>
+            <Typography sx={{ fontSize: '0.65rem', color: KZ.t3, mt: 0.3 }}>{opt.desc}</Typography>
+          </Box>
+        ))}
+      </Box>
+      {state.mode === 'family' && (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+          <TextField label="Nome do parceiro(a) — opcional" size="small" fullWidth value={state.partnerName}
+            onChange={e => onChange('partnerName', e.target.value)} placeholder="Ex: Ana" />
+          <Typography sx={{ fontSize: '0.65rem', color: KZ.t3, mt: 1 }}>
+            Você poderá convidá-lo(a) depois em <strong>Mais → Família</strong>.
+          </Typography>
+        </motion.div>
+      )}
+      <Button variant="contained" onClick={onNext} endIcon={<ArrowForwardIcon />}
+        sx={{ background: KZ_GRADIENTS.green, borderRadius: 2, fontWeight: 700, mt: 1 }}>
+        Finalizar
+      </Button>
+    </Box>
+  )
+}
+
 // ── Step: Done ────────────────────────────────────────────────────────────────
 function StepDone({ onFinish }: { onFinish: () => void }) {
   return (
@@ -261,6 +336,8 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
   const { addAccount }  = useAccountsStore()
   const { addBill }     = useBillsStore()
   const { addGoal }     = useGoalsStore()
+  const addTransaction  = useTransactionsStore(s => s.addTransaction)
+  const { setMode, setMonthlyIncome, addMember } = useProfileStore()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<OnboardingState>(INIT)
 
@@ -270,15 +347,30 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
     setForm(p => ({ ...p, [k]: v }))
   }
 
+  function handleIncome() {
+    if (form.income) {
+      const cents = Math.round(parseFloat(form.income.replace(',', '.')) * 100) || 0
+      if (cents > 0) {
+        setMonthlyIncome(cents)
+        // Lança a renda do mês como receita recorrente — o app já mostra movimento
+        addTransaction({
+          type: 'income', amount: cents, description: 'Salário', categoryId: 'receita',
+          date: new Date().toISOString().slice(0, 8) + '05', status: 'confirmed', isRecurring: true,
+        })
+      }
+    }
+    setStep(2)
+  }
+
   function handleAccount() {
     if (form.accountName) {
       addAccount({
         name: form.accountName, type: form.accountType, bank: form.accountBank,
         balance: form.balance ? Math.round(parseFloat(form.balance.replace(',', '.')) * 100) : 0,
-        color: KZ.green, icon: '🏦', isShared: true,
+        color: KZ.green, icon: '🏦', isShared: form.mode === 'family',
       })
     }
-    setStep(2)
+    setStep(3)
   }
 
   function handleBill() {
@@ -288,10 +380,10 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         amount: Math.round(parseFloat(form.billAmount.replace(',', '.')) * 100),
         dueDate: form.billDueDate || new Date().toISOString().slice(0, 10),
         frequency: 'monthly', categoryId: 'outros', status: 'pending',
-        isShared: true, reminderDays: 3, whatsappAlert: false,
+        isShared: form.mode === 'family', reminderDays: 3, whatsappAlert: false,
       })
     }
-    setStep(3)
+    setStep(4)
   }
 
   function handleGoal() {
@@ -304,7 +396,13 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         icon: '🎯', color: KZ.gold, status: 'active',
       })
     }
-    setStep(4)
+    setStep(5)
+  }
+
+  function handleFamily() {
+    setMode(form.mode)
+    if (form.mode === 'family' && form.partnerName.trim()) addMember(form.partnerName)
+    setStep(6)
   }
 
   const stepProps = { state: form, onChange, onSkip: () => setStep(s => s + 1) }
@@ -348,10 +446,12 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
               )}
 
               {step === 0 && <StepWelcome name={userName} onNext={() => setStep(1)} />}
-              {step === 1 && <StepAccount {...stepProps} onNext={handleAccount} />}
-              {step === 2 && <StepBill   {...stepProps} onNext={handleBill} />}
-              {step === 3 && <StepGoal   {...stepProps} onNext={handleGoal} />}
-              {step === 4 && <StepDone onFinish={() => navigate('/app', { replace: true })} />}
+              {step === 1 && <StepIncome  {...stepProps} onNext={handleIncome} />}
+              {step === 2 && <StepAccount {...stepProps} onNext={handleAccount} />}
+              {step === 3 && <StepBill    {...stepProps} onNext={handleBill} />}
+              {step === 4 && <StepGoal    {...stepProps} onNext={handleGoal} />}
+              {step === 5 && <StepFamily  {...stepProps} onNext={handleFamily} />}
+              {step === 6 && <StepDone onFinish={() => navigate('/app', { replace: true })} />}
             </motion.div>
           </AnimatePresence>
         </Paper>

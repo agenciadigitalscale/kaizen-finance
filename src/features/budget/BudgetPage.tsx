@@ -18,9 +18,10 @@ function BudgetCard({ item, onEdit }: {
   item: BudgetItem & { name: string; icon: string; color: string }
   onEdit: (item: BudgetItem) => void
 }) {
-  const pct     = Math.min(Math.round((item.spent / item.planned) * 100), 100)
-  const isOver  = item.spent > item.planned
-  const isWarn  = pct >= 85 && !isOver
+  const noLimit = item.planned <= 0
+  const pct     = noLimit ? 0 : Math.min(Math.round((item.spent / item.planned) * 100), 100)
+  const isOver  = !noLimit && item.spent > item.planned
+  const isWarn  = !noLimit && pct >= 80 && !isOver
   const barColor = isOver ? KZ.red : isWarn ? KZ.gold : KZ.green
   const remaining = item.planned - item.spent
 
@@ -48,38 +49,58 @@ function BudgetCard({ item, onEdit }: {
           </Box>
         </Box>
 
-        {/* Progress bar */}
-        <LinearProgress
-          variant="determinate"
-          value={Math.min(pct, 100)}
-          sx={{
-            height: 6, borderRadius: 3, mb: 1,
-            bgcolor: 'rgba(255,255,255,0.06)',
-            '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
-          }}
-        />
+        {noLimit ? (
+          <Box
+            component={motion.div} whileTap={{ scale: 0.98 }} onClick={() => onEdit(item)}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.5, cursor: 'pointer' }}
+          >
+            <Box>
+              <Typography sx={{ fontSize: '0.62rem', color: KZ.t3 }}>Gasto</Typography>
+              <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: KZ.t1, letterSpacing: '-0.02em' }}>
+                {formatBRL(item.spent)}
+              </Typography>
+            </Box>
+            <Chip label="Definir limite" size="small" icon={<EditIcon sx={{ fontSize: 12 }} />}
+              sx={{ bgcolor: 'rgba(255,255,255,0.05)', color: KZ.t2, border: `1px solid ${KZ.border}`, fontSize: '0.62rem', fontWeight: 600 }} />
+          </Box>
+        ) : (
+          <>
+            {/* Progress bar */}
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(pct, 100)}
+              sx={{
+                height: 6, borderRadius: 3, mb: 1,
+                bgcolor: 'rgba(255,255,255,0.06)',
+                '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
+              }}
+            />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <Box>
-            <Typography sx={{ fontSize: '0.62rem', color: KZ.t3 }}>Gasto</Typography>
-            <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: isOver ? KZ.red : KZ.t1, letterSpacing: '-0.02em' }}>
-              {formatBRL(item.spent)}
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: barColor }}>{pct}%</Typography>
-          </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography sx={{ fontSize: '0.62rem', color: KZ.t3 }}>{isOver ? 'Excedido' : 'Disponível'}</Typography>
-            <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: isOver ? KZ.red : KZ.green, letterSpacing: '-0.02em' }}>
-              {isOver ? '+' : ''}{formatBRL(Math.abs(remaining))}
-            </Typography>
-          </Box>
-        </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <Box>
+                <Typography sx={{ fontSize: '0.62rem', color: KZ.t3 }}>Gasto</Typography>
+                <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: isOver ? KZ.red : KZ.t1, letterSpacing: '-0.02em' }}>
+                  {formatBRL(item.spent)}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: barColor }}>{pct}%</Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography sx={{ fontSize: '0.62rem', color: KZ.t3 }}>{isOver ? 'Excedido' : 'Disponível'}</Typography>
+                <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, color: isOver ? KZ.red : KZ.green, letterSpacing: '-0.02em' }}>
+                  {isOver ? '+' : ''}{formatBRL(Math.abs(remaining))}
+                </Typography>
+              </Box>
+            </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.8 }}>
-          <Typography sx={{ fontSize: '0.58rem', color: KZ.t3 }}>Limite: {formatBRL(item.planned)}</Typography>
-        </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.8 }}>
+              <Typography sx={{ fontSize: '0.58rem', color: KZ.t3 }}>Limite: {formatBRL(item.planned)}</Typography>
+              {isWarn && <Typography sx={{ fontSize: '0.58rem', color: KZ.gold, fontWeight: 700 }}>Atingiu {pct}% do limite</Typography>}
+              {isOver && <Typography sx={{ fontSize: '0.58rem', color: KZ.red, fontWeight: 700 }}>Estourou o limite</Typography>}
+            </Box>
+          </>
+        )}
       </Paper>
     </motion.div>
   )
@@ -193,7 +214,7 @@ export default function BudgetPage() {
             </Box>
             <LinearProgress
               variant="determinate"
-              value={Math.min(Math.round((totals.spent / totals.planned) * 100), 100)}
+              value={totals.planned > 0 ? Math.min(Math.round((totals.spent / totals.planned) * 100), 100) : 0}
               sx={{ height: 8, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.06)',
                 '& .MuiLinearProgress-bar': { bgcolor: totals.over > 0 ? KZ.red : KZ.green } }}
             />

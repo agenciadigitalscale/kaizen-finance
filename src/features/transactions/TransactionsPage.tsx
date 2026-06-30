@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   Box, Typography, Paper, Button, Chip, IconButton, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Select, MenuItem, FormControl,
-  InputLabel, ToggleButton, ToggleButtonGroup, Tooltip,
+  InputLabel, ToggleButton, ToggleButtonGroup, Tooltip, Snackbar,
 } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import AddIcon          from '@mui/icons-material/Add'
@@ -17,6 +17,7 @@ import NavigateNextIcon   from '@mui/icons-material/NavigateNext'
 import { KZ, KZ_GRADIENTS } from '@/theme'
 import { formatBRL, type Transaction, type TransactionType, DEFAULT_CATEGORIES } from '@/types'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import VoiceInput from './VoiceInput'
 
 const CAT_MAP = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [c.group, c]))
 
@@ -163,9 +164,10 @@ function TxDialog({ open, tx, onClose, onSave }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TransactionsPage() {
   const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactionsStore()
-  const [dialog, setDialog]  = useState<{ open: boolean; tx: Partial<Transaction> | null }>({ open: false, tx: null })
+  const [dialog, setDialog]     = useState<{ open: boolean; tx: Partial<Transaction> | null }>({ open: false, tx: null })
+  const [voiceToast, setVoiceToast] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all')
-  const [search, setSearch]  = useState('')
+  const [search, setSearch]     = useState('')
   const [monthOffset, setMonthOffset] = useState(0)
 
   const currentDate = useMemo(() => {
@@ -221,11 +223,19 @@ export default function TransactionsPage() {
             <Typography sx={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em' }}>Lançamentos</Typography>
             <Typography sx={{ fontSize: '0.75rem', color: KZ.t3, mt: 0.3 }}>{stats.count} transações em {monthLabel}</Typography>
           </Box>
-          <Button variant="contained" startIcon={<AddIcon />}
-            onClick={() => setDialog({ open: true, tx: { ...EMPTY_TX, date: new Date().toISOString().slice(0, 10) } })}
-            sx={{ background: KZ_GRADIENTS.green, borderRadius: 2, fontSize: '0.78rem' }}>
-            Novo lançamento
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <VoiceInput onResult={tx => {
+              const amount = Math.round(tx.amount * 100)
+              addTransaction({ ...EMPTY_TX, ...tx, amount })
+              const label = tx.type === 'income' ? 'Receita' : 'Despesa'
+              setVoiceToast(`${label} salva: ${tx.description} — R$ ${tx.amount.toFixed(2).replace('.', ',')}`)
+            }} />
+            <Button variant="contained" startIcon={<AddIcon />}
+              onClick={() => setDialog({ open: true, tx: { ...EMPTY_TX, date: new Date().toISOString().slice(0, 10) } })}
+              sx={{ background: KZ_GRADIENTS.green, borderRadius: 2, fontSize: '0.78rem' }}>
+              Novo lançamento
+            </Button>
+          </Box>
         </Box>
       </motion.div>
 
@@ -317,6 +327,22 @@ export default function TransactionsPage() {
         onClose={() => setDialog({ open: false, tx: null })}
         onSave={handleSave}
       />
+
+      <Snackbar
+        open={!!voiceToast}
+        autoHideDuration={4000}
+        onClose={() => setVoiceToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Box sx={{
+          bgcolor: 'rgba(16,185,129,0.97)', color: '#fff', fontWeight: 700,
+          fontSize: '0.82rem', borderRadius: 2, px: 2.5, py: 1.2,
+          boxShadow: '0 8px 32px rgba(16,185,129,0.35)',
+          display: 'flex', alignItems: 'center', gap: 1,
+        }}>
+          ✅ {voiceToast}
+        </Box>
+      </Snackbar>
     </Box>
   )
 }

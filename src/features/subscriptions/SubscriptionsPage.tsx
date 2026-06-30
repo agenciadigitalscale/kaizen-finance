@@ -317,6 +317,18 @@ export default function SubscriptionsPage() {
         ))}
       </Box>
 
+      {/* Frase inteligente */}
+      {allSubs.length > 0 && (
+        <Paper sx={{ p: 2, mb: 2.5, display: 'flex', alignItems: 'center', gap: 1.3,
+          background: `linear-gradient(135deg, rgba(245,158,11,0.05) 0%, transparent 60%)`, border: `1px solid rgba(245,158,11,0.15)` }}>
+          <Typography sx={{ fontSize: '1.3rem' }}>📡</Typography>
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: KZ.t1, lineHeight: 1.45 }}>
+            Você gasta <Typography component="span" sx={{ color: KZ.gold, fontWeight: 800 }}>{formatBRL(totals.monthly)}</Typography> por mês em assinaturas.
+            {' '}Em 1 ano, isso dá <Typography component="span" sx={{ color: KZ.red, fontWeight: 800 }}>{formatBRL(totals.yearly)}</Typography>.
+          </Typography>
+        </Paper>
+      )}
+
       {/* Alert for savings */}
       {totals.unused > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

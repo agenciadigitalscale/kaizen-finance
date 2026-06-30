@@ -3,7 +3,6 @@
 -- ────────────────────────────────────────────────────────────────────────────
 
 PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
 
 -- ── Usuários ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (

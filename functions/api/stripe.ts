@@ -44,7 +44,7 @@ export const onRequest: PagesFunction<StripeEnv> = async (ctx) => {
         'line_items[0][price]':               priceId,
         'line_items[0][quantity]':            '1',
         mode:                                 'subscription',
-        'subscription_data[trial_period_days]': '14',
+        'subscription_data[trial_period_days]': '7',
         success_url:                          `${appUrl}/app?checkout=success`,
         cancel_url:                           `${appUrl}/pricing`,
         'metadata[userId]':                   userId,

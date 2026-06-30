@@ -17,14 +17,24 @@ export const onRequest: PagesFunction<EnvWithAI> = async (ctx) => {
 
   if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405)
 
-  const body = await request.json() as { financialData: unknown }
-  const { financialData } = body
+  const body = await request.json() as { financialData: unknown; question?: string }
+  const { financialData, question } = body
 
   if (!env.ANTHROPIC_API_KEY) {
     return json({ ok: false, error: 'ANTHROPIC_API_KEY não configurada' }, 503)
   }
 
-  const prompt = `Você é um consultor financeiro pessoal especializado em finanças familiares brasileiras.
+  const prompt = question
+    ? `Você é o Kaizen, um consultor financeiro pessoal de finanças familiares brasileiras.
+O usuário fez esta pergunta: "${question}"
+
+Responda de forma direta, prática e motivadora, em português, usando os dados financeiros dele abaixo.
+Use no máximo 180 palavras. Use **negrito** para destacar o ponto principal e bullets quando útil. Cite valores em reais.
+
+IMPORTANTE: todos os valores monetários abaixo estão em CENTAVOS — divida por 100 para obter o valor em reais (ex: 50000 = R$ 500,00).
+Dados financeiros:
+${JSON.stringify(financialData, null, 2)}`
+    : `Você é um consultor financeiro pessoal especializado em finanças familiares brasileiras.
 Analise os dados financeiros abaixo e forneça uma análise detalhada em português, estruturada em:
 
 1. **Resumo geral** (2-3 frases sobre a saúde financeira)
@@ -33,6 +43,7 @@ Analise os dados financeiros abaixo e forneça uma análise detalhada em portugu
 4. **Recomendações** (3-5 ações concretas e priorizadas)
 5. **Meta do mês** (UMA meta específica e alcançável para o próximo mês)
 
+IMPORTANTE: todos os valores monetários abaixo estão em CENTAVOS — divida por 100 para obter o valor em reais (ex: 50000 = R$ 500,00).
 Dados financeiros:
 ${JSON.stringify(financialData, null, 2)}
 

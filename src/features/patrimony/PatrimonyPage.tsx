@@ -15,6 +15,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer
 import { KZ, KZ_GRADIENTS } from '@/theme'
 import { formatBRL, type Asset, type AssetType, type Liability } from '@/types'
 import { usePatrimonyStore } from '@/shared/stores/patrimonyStore'
+import { useIsDemo } from '@/features/auth/authStore'
 
 const HISTORY_DATA = [
   { month: 'Jan', patrimony: 28500000 },
@@ -89,7 +90,9 @@ function AssetCard({ asset, onEdit, onDelete }: {
 function LiabilityCard({ liability, onEdit, onDelete }: {
   liability: Liability; onEdit: (l: Liability) => void; onDelete: (id: string) => void
 }) {
-  const paidPct = Math.round(((liability.totalAmount - liability.remainingAmount) / liability.totalAmount) * 100)
+  const paidPct = liability.totalAmount > 0
+    ? Math.round(((liability.totalAmount - liability.remainingAmount) / liability.totalAmount) * 100)
+    : 0
 
   return (
     <Box sx={{
@@ -222,6 +225,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PatrimonyPage() {
   const { assets, liabilities, addAsset, updateAsset, deleteAsset, addLiability, updateLiability, deleteLiability } = usePatrimonyStore()
+  const isDemo = useIsDemo()
   const [assetDialog, setAssetDialog] = useState<{ open: boolean; asset: Partial<Asset> | null }>({ open: false, asset: null })
   const [liabDialog, setLiabDialog]   = useState<{ open: boolean; liability: Partial<Liability> | null }>({ open: false, liability: null })
 
@@ -230,6 +234,13 @@ export default function PatrimonyPage() {
     const totalLiabilities = liabilities.reduce((s, l) => s + l.remainingAmount, 0)
     return { assets: totalAssets, liabilities: totalLiabilities, net: totalAssets - totalLiabilities }
   }, [assets, liabilities])
+
+  // Histórico: demo usa série rica; real ancora no patrimônio líquido atual
+  const history = useMemo(() =>
+    isDemo ? HISTORY_DATA : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'].map(month => ({ month, patrimony: totals.net })),
+    [isDemo, totals.net]
+  )
+  const growth = isDemo ? HISTORY_DATA[HISTORY_DATA.length - 1].patrimony - HISTORY_DATA[HISTORY_DATA.length - 2].patrimony : null
 
   const byType = useMemo(() => {
     const map: Record<string, number> = {}
@@ -262,9 +273,9 @@ export default function PatrimonyPage() {
       {/* KPIs */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 3 }}>
         {[
-          { label: 'Total de Ativos', value: formatBRL(totals.assets), color: KZ.green, icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
-          { label: 'Total de Dívidas', value: formatBRL(totals.liabilities), color: KZ.red, icon: <TrendingDownIcon sx={{ fontSize: 18 }} /> },
-          { label: 'Patrimônio Líquido', value: formatBRL(totals.net), color: totals.net >= 0 ? KZ.green : KZ.red, icon: <AccountBalanceIcon sx={{ fontSize: 18 }} /> },
+          { label: 'O que você tem', value: formatBRL(totals.assets), color: KZ.green, icon: <TrendingUpIcon sx={{ fontSize: 18 }} /> },
+          { label: 'O que você deve', value: formatBRL(totals.liabilities), color: KZ.red, icon: <TrendingDownIcon sx={{ fontSize: 18 }} /> },
+          { label: 'Patrimônio líquido', value: formatBRL(totals.net), color: totals.net >= 0 ? KZ.green : KZ.red, icon: <AccountBalanceIcon sx={{ fontSize: 18 }} /> },
         ].map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Paper sx={{ p: 2.5, border: `1px solid ${kpi.color}18`, background: `linear-gradient(135deg, ${kpi.color}06 0%, transparent 100%)` }}>
@@ -277,6 +288,21 @@ export default function PatrimonyPage() {
           </motion.div>
         ))}
       </Box>
+
+      {/* Frase inteligente */}
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 1.3,
+        background: `linear-gradient(135deg, ${(totals.net >= 0 ? KZ.green : KZ.red)}0E 0%, transparent 65%)`,
+        border: `1px solid ${(totals.net >= 0 ? KZ.green : KZ.red)}25` }}>
+        <Typography sx={{ fontSize: '1.3rem' }}>💎</Typography>
+        <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: KZ.t1, lineHeight: 1.4 }}>
+          {growth != null && growth > 0
+            ? <>Seu patrimônio líquido cresceu <Typography component="span" sx={{ color: KZ.green, fontWeight: 800 }}>{formatBRL(growth)}</Typography> este mês.</>
+            : totals.net > 0
+              ? <>Seu patrimônio líquido é <Typography component="span" sx={{ color: KZ.green, fontWeight: 800 }}>{formatBRL(totals.net)}</Typography>. Mantenha ativos e dívidas atualizados para acompanhar a evolução.</>
+              : <>Cadastre seus <strong>ativos</strong> (imóveis, carro, investimentos) e <strong>dívidas</strong> para ver seu patrimônio líquido.</>
+          }
+        </Typography>
+      </Paper>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 2, mb: 2 }}>
 
@@ -297,7 +323,7 @@ export default function PatrimonyPage() {
           <Box sx={{ mb: 2, display: 'flex', gap: 0.6, flexWrap: 'wrap' }}>
             {byType.map(([type, val]) => (
               <Tooltip key={type} title={`${ASSET_TYPE_LABELS[type as AssetType]}: ${formatBRL(val)}`}>
-                <Chip label={`${ASSET_TYPE_ICONS[type as AssetType]} ${Math.round((val / totals.assets) * 100)}%`} size="small"
+                <Chip label={`${ASSET_TYPE_ICONS[type as AssetType]} ${totals.assets > 0 ? Math.round((val / totals.assets) * 100) : 0}%`} size="small"
                   sx={{ height: 20, fontSize: '0.62rem', bgcolor: 'rgba(16,185,129,0.07)', color: KZ.green }} />
               </Tooltip>
             ))}
@@ -341,7 +367,7 @@ export default function PatrimonyPage() {
         </Typography>
         <Box sx={{ height: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={HISTORY_DATA}>
+            <AreaChart data={history}>
               <defs>
                 <linearGradient id="patriGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={KZ.green} stopOpacity={0.25} />

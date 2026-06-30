@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
 import {
   Box, Typography, Paper, ToggleButton, ToggleButtonGroup, IconButton,
+  Button, CircularProgress,
 } from '@mui/material'
 import { motion } from 'framer-motion'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
+import { api } from '@/shared/lib/api'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer,
   CartesianGrid, PieChart, Pie, LineChart, Line, AreaChart, Area, Legend,
@@ -169,6 +172,62 @@ export default function ReportsPage() {
     : 0
   const currentBalance = balanceHistory[5]?.balance ?? 0
 
+  // ── Resumo em texto / insights ────────────────────────────────────────────
+  const insights = useMemo(() => {
+    const income  = currentMonthData.income
+    const expense = currentMonthData.expense
+    const savings = income > 0 ? Math.round(((income - expense) / income) * 100) : 0
+    const biggest = categoryData[0] ?? null
+
+    // Categoria que mais cresceu vs mês anterior
+    let grower: { name: string; color: string } | null = null
+    if (!isDemo) {
+      const prevMs = monthStr(offsetDate(monthOffset - 1))
+      const curMs  = monthStr(currentDate)
+      const sumBy = (ms: string) => {
+        const acc: Record<string, number> = {}
+        for (const t of transactions)
+          if (t.type === 'expense' && t.status === 'confirmed' && t.date.startsWith(ms))
+            acc[t.categoryId] = (acc[t.categoryId] ?? 0) + t.amount
+        return acc
+      }
+      const prev = sumBy(prevMs), cur = sumBy(curMs)
+      let best = 0
+      for (const id in cur) { const g = cur[id] - (prev[id] ?? 0); if (g > best) { best = g; grower = { name: catMeta(id).name, color: catMeta(id).color } } }
+    } else {
+      grower = { name: 'Saúde', color: '#EF4444' }
+    }
+
+    let attention = 'nenhum risco grave detectado — continue assim 👏'
+    if (income > 0 && expense > income) attention = 'você gastou mais do que recebeu este mês'
+    else if (biggest && expense > 0 && biggest.value / expense > 0.4) attention = `${biggest.name} concentra mais de 40% dos seus gastos`
+    else if (savings > 0 && savings < 10) attention = 'sua taxa de poupança está baixa (abaixo de 10%)'
+
+    return { income, expense, savings, biggest, grower, attention }
+  }, [currentMonthData, categoryData, isDemo, transactions, currentDate, monthOffset])
+
+  const monthShort = currentDate.toLocaleDateString('pt-BR', { month: 'long' })
+
+  // ── Análise com IA (inline) ───────────────────────────────────────────────
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiText, setAiText]       = useState<string | null>(null)
+  const [aiErr, setAiErr]         = useState('')
+
+  async function genAI() {
+    if (isDemo) {
+      setAiText('Seu mês foi equilibrado. A taxa de poupança está saudável, mas vale reduzir gastos com Lazer, que cresceram em relação ao mês anterior. Continue priorizando a reserva de emergência.')
+      return
+    }
+    setAiLoading(true); setAiErr('')
+    try {
+      const res = await api.ai.analyze({ income: insights.income, expense: insights.expense, savings: insights.savings, categories: categoryData }) as { ok: boolean; data?: { analysis: string }; error?: string }
+      if (res.ok && res.data) setAiText(res.data.analysis)
+      else setAiErr(res.error ?? 'Erro ao gerar análise')
+    } catch {
+      setAiErr('ANTHROPIC_API_KEY não configurada no servidor.')
+    } finally { setAiLoading(false) }
+  }
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1200, mx: 'auto' }}>
 
@@ -223,6 +282,66 @@ export default function ReportsPage() {
           </motion.div>
         ))}
       </Box>
+
+      {/* Resumo em texto / insights */}
+      <Paper sx={{ p: 2.5, mb: 3, background: `linear-gradient(135deg, rgba(16,185,129,0.04) 0%, transparent 60%)`, border: `1px solid rgba(16,185,129,0.15)` }}>
+        <Typography sx={{ fontSize: '0.95rem', fontWeight: 800, textTransform: 'capitalize', mb: 1.5 }}>
+          Resumo de {monthShort}
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.9 }}>
+          {[
+            { icon: '📈', text: <>Você recebeu <Typography component="span" sx={{ color: KZ.green, fontWeight: 800 }}>{formatBRL(insights.income)}</Typography>.</> },
+            { icon: '📉', text: <>Gastou <Typography component="span" sx={{ color: KZ.red, fontWeight: 800 }}>{formatBRL(insights.expense)}</Typography>.</> },
+            { icon: '💰', text: <>Guardou <Typography component="span" sx={{ color: insights.savings >= 0 ? KZ.blue : KZ.red, fontWeight: 800 }}>{insights.savings}%</Typography> da renda.</> },
+            ...(insights.biggest ? [{ icon: '🏆', text: <>Sua maior despesa foi <Typography component="span" sx={{ color: insights.biggest.color, fontWeight: 800 }}>{insights.biggest.name}</Typography> ({formatBRL(insights.biggest.value)}).</> }] : []),
+            ...(insights.grower ? [{ icon: '🚀', text: <>A categoria que mais cresceu foi <Typography component="span" sx={{ color: insights.grower.color, fontWeight: 800 }}>{insights.grower.name}</Typography>.</> }] : []),
+            { icon: '⚠️', text: <>Ponto de atenção: {insights.attention}.</> },
+          ].map((line, i) => (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <Typography sx={{ fontSize: '0.85rem', lineHeight: 1.5 }}>{line.icon}</Typography>
+              <Typography sx={{ fontSize: '0.82rem', color: KZ.t1, lineHeight: 1.5 }}>{line.text}</Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {/* Análise com IA */}
+        <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${KZ.border}` }}>
+          {!aiText && !aiLoading && (
+            <Button
+              variant="outlined" size="small" onClick={genAI}
+              startIcon={<SmartToyIcon sx={{ fontSize: 16 }} />}
+              sx={{ borderColor: 'rgba(59,130,246,0.35)', color: KZ.blue, fontSize: '0.78rem', borderRadius: 2,
+                '&:hover': { borderColor: KZ.blue, bgcolor: 'rgba(59,130,246,0.06)' } }}
+            >
+              Gerar análise com IA
+            </Button>
+          )}
+          {aiLoading && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={14} sx={{ color: KZ.blue }} />
+              <Typography sx={{ fontSize: '0.78rem', color: KZ.t3 }}>Analisando seu mês com a IA…</Typography>
+            </Box>
+          )}
+          {aiErr && <Typography sx={{ fontSize: '0.75rem', color: KZ.red }}>{aiErr}</Typography>}
+          {aiText && (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <SmartToyIcon sx={{ fontSize: 15, color: KZ.blue }} />
+                <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: KZ.blue, flex: 1 }}>Análise IA</Typography>
+                <Button size="small" onClick={() => setAiText(null)} sx={{ fontSize: '0.62rem', color: KZ.t3, minWidth: 0 }}>Fechar</Button>
+              </Box>
+              {aiText.split('\n').filter(l => l.trim()).map((line, i) => {
+                const isBold = line.startsWith('**')
+                return (
+                  <Typography key={i} sx={{ fontSize: isBold ? '0.78rem' : '0.74rem', fontWeight: isBold ? 700 : 400, color: isBold ? KZ.blue : KZ.t2, mt: isBold ? 0.8 : 0, lineHeight: 1.6 }}>
+                    {line.replace(/\*\*/g, '')}
+                  </Typography>
+                )
+              })}
+            </motion.div>
+          )}
+        </Box>
+      </Paper>
 
       {/* Main charts */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, gap: 2, mb: 2 }}>

@@ -209,13 +209,29 @@ export default function CashflowPage() {
   const transactions = useTransactionsStore(s => s.transactions)
 
   const [horizon, setHorizon] = useState<30 | 60 | 90>(30)
+  const [simAdjust, setSimAdjust] = useState(0)
 
-  const forecast = useMemo(
+  const baseForecast = useMemo(
     () => isDemo
       ? generateDemoForecast(horizon)
       : generateRealForecast(horizon, accounts, bills, transactions),
     [isDemo, horizon, accounts, bills, transactions],
   )
+  // Aplica a simulação "E se...?" (mudança pontual hoje, reflete em todos os dias seguintes)
+  const forecast = useMemo(
+    () => simAdjust === 0
+      ? baseForecast
+      : baseForecast.map(d => ({ ...d, balance: d.balance + simAdjust, isNeg: (d.balance + simAdjust) < 0 })),
+    [baseForecast, simAdjust],
+  )
+  // Próxima conta pesada (maior saída agendada)
+  const heaviest = useMemo(() => {
+    let h: { name: string; amount: number; label: string } | null = null
+    for (const d of baseForecast) for (const e of d.events) {
+      if (e.amount < 0 && (!h || Math.abs(e.amount) > Math.abs(h.amount))) h = { name: e.name, amount: e.amount, label: d.label }
+    }
+    return h
+  }, [baseForecast])
 
   const negDays  = forecast.filter(d => d.isNeg)
   const minDay   = forecast.reduce((m, d) => d.balance < m.balance ? d : m, forecast[0])
@@ -233,9 +249,11 @@ export default function CashflowPage() {
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
           <Box>
-            <Typography sx={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em' }}>Previsão de Caixa</Typography>
+            <Typography sx={{ fontSize: { xs: '1.3rem', md: '1.5rem' }, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.15 }}>
+              Seu dinheiro aguenta os próximos {horizon} dias?
+            </Typography>
             <Typography sx={{ fontSize: '0.75rem', color: KZ.t3, mt: 0.3 }}>
-              Simulação dia a dia — baseada em contas e receitas programadas
+              Previsão dia a dia — contas e receitas programadas
             </Typography>
           </Box>
           <ToggleButtonGroup value={horizon} exclusive size="small" onChange={(_, v) => v && setHorizon(v)}
@@ -296,6 +314,56 @@ export default function CashflowPage() {
           </motion.div>
         ))}
       </Box>
+
+      {/* Simulações "E se...?" */}
+      <Paper sx={{ p: 2.5, mb: 3, background: `linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 60%)`, border: `1px solid rgba(59,130,246,0.15)` }}>
+        <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: KZ.t2, mb: 1.5 }}>
+          E se...? Simule o impacto
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mb: 1.5 }}>
+          {[
+            { label: '💸 Gastar R$500', delta: -50000 },
+            { label: '💰 Receber R$1.000', delta: 100000 },
+            ...(heaviest ? [{ label: `📤 Pagar ${heaviest.name} hoje`, delta: heaviest.amount }] : []),
+          ].map(opt => {
+            const active = simAdjust === opt.delta
+            return (
+              <Box
+                key={opt.label} component={motion.div} whileTap={{ scale: 0.95 }}
+                onClick={() => setSimAdjust(active ? 0 : opt.delta)}
+                sx={{
+                  px: 1.6, py: 0.9, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: '0.74rem',
+                  ...(active
+                    ? { bgcolor: 'rgba(59,130,246,0.18)', color: KZ.blue, border: `1px solid ${KZ.blue}` }
+                    : { bgcolor: 'rgba(255,255,255,0.04)', color: KZ.t2, border: `1px solid ${KZ.border}` }),
+                }}
+              >
+                {opt.label}
+              </Box>
+            )
+          })}
+          {simAdjust !== 0 && (
+            <Box component={motion.div} whileTap={{ scale: 0.95 }} onClick={() => setSimAdjust(0)}
+              sx={{ px: 1.6, py: 0.9, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: '0.74rem', color: KZ.t3, border: `1px solid ${KZ.border}` }}>
+              ✕ Limpar
+            </Box>
+          )}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1.2, borderRadius: 2,
+          bgcolor: simAdjust !== 0 ? (negDays.length > 0 ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.06)') : 'rgba(255,255,255,0.02)',
+          border: `1px solid ${simAdjust !== 0 ? (negDays.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)') : KZ.border}` }}>
+          <Typography sx={{ fontSize: '0.78rem', color: KZ.t1, lineHeight: 1.4 }}>
+            {simAdjust === 0
+              ? heaviest
+                ? <>Sua próxima conta pesada é <strong>{heaviest.name}</strong> ({formatBRL(Math.abs(heaviest.amount))}) em {heaviest.label}. Toque numa simulação acima.</>
+                : <>Toque numa simulação para ver o impacto no seu saldo.</>
+              : negDays.length > 0
+                ? <>Com essa mudança, você ficaria <Typography component="span" sx={{ color: KZ.red, fontWeight: 800 }}>negativo em {negDays.length} dia{negDays.length > 1 ? 's' : ''}</Typography> (menor saldo {formatBRL(minDay.balance)}).</>
+                : <>Mesmo assim você fica <Typography component="span" sx={{ color: KZ.green, fontWeight: 800 }}>no positivo</Typography> — menor saldo {formatBRL(minDay.balance)}.</>
+            }
+          </Typography>
+        </Box>
+      </Paper>
 
       {/* Chart */}
       <Paper sx={{ p: 2.5, mb: 3 }}>

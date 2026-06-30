@@ -37,7 +37,15 @@ export const useAuthStore = create<AuthState>()(
 
       setToken: (token) => set({ accessToken: token }),
 
-      logout: () => set({ user: null, household: null, role: '', accessToken: null }),
+      logout: () => {
+        // Limpa dados persistidos dos stores para demo e real nunca se misturarem
+        try {
+          for (const key of Object.keys(localStorage)) {
+            if (key.startsWith('kz-') && key !== 'kz-auth') localStorage.removeItem(key)
+          }
+        } catch { /* ignore */ }
+        set({ user: null, household: null, role: '', accessToken: null })
+      },
     }),
     {
       name: 'kz-auth',

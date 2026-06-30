@@ -21,6 +21,12 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   return hash === storedHash
 }
 
+// One-way SHA-256 hash — never reversible, safe to store in DB
+async function hashToken(token: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 async function signJWT(payload: object, secret: string, expiresInSec: number): Promise<string> {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const exp    = Math.floor(Date.now() / 1000) + expiresInSec
@@ -30,6 +36,10 @@ async function signJWT(payload: object, secret: string, expiresInSec: number): P
   const sig    = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data))
   const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
   return `${data}.${sigB64}`
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
 const MEMBER_COLORS = ['#10B981','#3B82F6','#F59E0B','#EC4899','#8B5CF6','#14B8A6']
@@ -50,10 +60,17 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   // ── POST /api/auth/signup ────────────────────────────────────────────────────
   if (action === 'signup') {
     const { name, email, password, householdName } = body
+
     if (!name || !email || !password)
       return json({ ok: false, error: 'Campos obrigatórios faltando' }, 400)
 
-    const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
+    if (!isValidEmail(email))
+      return json({ ok: false, error: 'E-mail inválido' }, 400)
+
+    if (password.length < 8)
+      return json({ ok: false, error: 'Senha deve ter no mínimo 8 caracteres' }, 400)
+
+    const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first()
     if (existing) return json({ ok: false, error: 'E-mail já cadastrado' }, 409)
 
     const userId      = crypto.randomUUID()
@@ -63,7 +80,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
 
     await env.DB.batch([
       env.DB.prepare('INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)')
-        .bind(userId, email, name, pwHash),
+        .bind(userId, email.toLowerCase(), name, pwHash),
       env.DB.prepare('INSERT INTO households (id, name) VALUES (?, ?)')
         .bind(householdId, hName),
       env.DB.prepare('INSERT INTO household_members (household_id, user_id, role, name, color) VALUES (?, ?, ?, ?, ?)')
@@ -72,15 +89,16 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
 
     const accessToken  = await signJWT({ sub: userId, householdId, role: 'owner' }, env.JWT_SECRET, 15 * 60)
     const refreshToken = crypto.randomUUID()
+    const tokenHash    = await hashToken(refreshToken)
 
     await env.DB.prepare(
       'INSERT INTO refresh_tokens (id, user_id, household_id, token_hash, expires_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(crypto.randomUUID(), userId, householdId, btoa(refreshToken), Date.now() + 30 * 24 * 60 * 60 * 1000).run()
+    ).bind(crypto.randomUUID(), userId, householdId, tokenHash, Date.now() + 30 * 24 * 60 * 60 * 1000).run()
 
     return new Response(JSON.stringify({
       ok: true,
       data: {
-        user:      { id: userId, email, name },
+        user:      { id: userId, email: email.toLowerCase(), name },
         household: { id: householdId, name: hName },
         role:      'owner',
         accessToken,
@@ -100,11 +118,13 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     if (!email || !password) return json({ ok: false, error: 'E-mail e senha obrigatórios' }, 400)
 
     const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?')
-      .bind(email).first<{ id: string; email: string; name: string; password_hash: string }>()
-    if (!user) return json({ ok: false, error: 'E-mail ou senha incorretos' }, 401)
+      .bind(email.toLowerCase()).first<{ id: string; email: string; name: string; password_hash: string }>()
 
-    const valid = await verifyPassword(password, user.password_hash)
-    if (!valid)  return json({ ok: false, error: 'E-mail ou senha incorretos' }, 401)
+    // Always run verifyPassword even when user not found to prevent timing-based user enumeration
+    const dummyHash = 'pbkdf2:00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000'
+    const valid = user ? await verifyPassword(password, user.password_hash) : await verifyPassword(password, dummyHash).then(() => false)
+
+    if (!user || !valid) return json({ ok: false, error: 'E-mail ou senha incorretos' }, 401)
 
     const member = await env.DB.prepare(
       'SELECT hm.role, hm.color, h.id as hid, h.name as hname FROM household_members hm JOIN households h ON h.id = hm.household_id WHERE hm.user_id = ? LIMIT 1'
@@ -114,10 +134,11 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
 
     const accessToken  = await signJWT({ sub: user.id, householdId: member.hid, role: member.role }, env.JWT_SECRET, 15 * 60)
     const refreshToken = crypto.randomUUID()
+    const tokenHash    = await hashToken(refreshToken)
 
     await env.DB.prepare(
       'INSERT INTO refresh_tokens (id, user_id, household_id, token_hash, expires_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(crypto.randomUUID(), user.id, member.hid, btoa(refreshToken), Date.now() + 30 * 24 * 60 * 60 * 1000).run()
+    ).bind(crypto.randomUUID(), user.id, member.hid, tokenHash, Date.now() + 30 * 24 * 60 * 60 * 1000).run()
 
     return new Response(JSON.stringify({
       ok: true,
@@ -142,7 +163,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const match  = cookie.match(/kz_refresh=([^;]+)/)
     if (!match) return json({ ok: false, error: 'Sem refresh token', code: 'UNAUTHORIZED' }, 401)
 
-    const tokenHash = btoa(match[1])
+    const tokenHash = await hashToken(match[1])
     const row = await env.DB.prepare(
       'SELECT rt.*, u.name, u.email FROM refresh_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.token_hash = ? AND rt.expires_at > ?'
     ).bind(tokenHash, Date.now()).first<{ user_id: string; household_id: string; name: string; email: string }>()
@@ -158,6 +179,12 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
 
   // ── POST /api/auth/logout ────────────────────────────────────────────────────
   if (action === 'logout') {
+    const cookie = request.headers.get('Cookie') ?? ''
+    const match  = cookie.match(/kz_refresh=([^;]+)/)
+    if (match) {
+      const tokenHash = await hashToken(match[1])
+      await env.DB.prepare('DELETE FROM refresh_tokens WHERE token_hash = ?').bind(tokenHash).run()
+    }
     return new Response(JSON.stringify({ ok: true, data: undefined }), {
       headers: {
         'Content-Type': 'application/json',

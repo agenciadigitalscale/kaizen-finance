@@ -48,6 +48,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     for (const [k, col] of Object.entries(map)) {
       if (k in b) { sets.push(`${col} = ?`); vals.push(b[k]) }
     }
+    if (!sets.length) return json({ ok: false, error: 'Nenhum campo para atualizar' }, 400)
     vals.push(id, householdId)
     await env.DB.prepare(`UPDATE goals SET ${sets.join(', ')} WHERE id = ? AND household_id = ?`).bind(...vals).run()
     return json({ ok: true })

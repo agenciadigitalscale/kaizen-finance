@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Box, Typography, Paper, LinearProgress, Chip, Button, CircularProgress } from '@mui/material'
 import { motion } from 'framer-motion'
 import TrendingUpIcon    from '@mui/icons-material/TrendingUp'
@@ -6,14 +7,24 @@ import TrendingDownIcon  from '@mui/icons-material/TrendingDown'
 import WarningAmberIcon  from '@mui/icons-material/WarningAmber'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import SmartToyIcon      from '@mui/icons-material/SmartToy'
+import ChevronRightIcon  from '@mui/icons-material/ChevronRight'
 import { useHousehold, useUser, useIsDemo } from '@/features/auth/authStore'
 import { useAccountsStore }     from '@/shared/stores/accountsStore'
 import { useBillsStore }        from '@/shared/stores/billsStore'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
 import { useGoalsStore }        from '@/shared/stores/goalsStore'
+import { useBudgetStore }       from '@/shared/stores/budgetStore'
 import { api } from '@/shared/lib/api'
 import { KZ } from '@/theme'
-import { formatBRL } from '@/types'
+import { formatBRL, DEFAULT_CATEGORIES } from '@/types'
+
+// Mapa grupo → {nome, ícone} (primeiro de cada grupo)
+const CAT_MAP: Record<string, { name: string; icon: string }> = {}
+for (const c of DEFAULT_CATEGORIES) if (!CAT_MAP[c.group]) CAT_MAP[c.group] = { name: c.name, icon: c.icon }
+
+interface AttentionItem {
+  id: string; icon: string; title: string; sub: string; color: string; path: string
+}
 
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 function KPICard({ label, value, sub, color, icon, trend }: {
@@ -108,6 +119,28 @@ function BillRow({ name, amount, dueDate, daysLeft }: {
   )
 }
 
+// ── Kaizen Insights — perguntas prontas ───────────────────────────────────────
+const INSIGHT_QUESTIONS = [
+  'Como economizar este mês?',
+  'Vou ficar no vermelho?',
+  'Onde estou gastando demais?',
+  'Como melhorar meu score?',
+  'Criar plano para guardar dinheiro.',
+]
+
+const DEMO_ANSWERS: Record<string, string> = {
+  'Como economizar este mês?': '**Você pode economizar cerca de R$ 350 este mês.**\n• Lazer estourou R$ 120 — segure as saídas nas próximas 2 semanas.\n• Revise assinaturas: são R$ 209/mês e há 1 pouco usada.\n• Troque 2 deliveries por refeições em casa (~R$ 120).',
+  'Vou ficar no vermelho?': '**Não nos próximos 30 dias.** Seu saldo projetado se mantém positivo, com o menor ponto em R$ 4.200 por volta do dia 25 (IPTU). Evite compras grandes entre os dias 23 e 26.',
+  'Onde estou gastando demais?': '**Suas 3 maiores saídas são Moradia, Saúde e Alimentação.**\nO ponto de atenção é **Lazer**, que passou do orçamento em R$ 120. Alimentação também subiu — vale planejar o mercado da semana.',
+  'Como melhorar meu score?': '**Seu score é 72 (Bom).** Para subir:\n• Quite a conta atrasada (impacto imediato).\n• Mantenha o uso do cartão abaixo de 30% do limite.\n• Aumente a reserva de emergência para 3 meses de despesas.',
+  'Criar plano para guardar dinheiro.': '**Plano sugerido: guardar R$ 500/mês.**\n• Automatize uma transferência no dia do salário.\n• Direcione metade para a reserva de emergência e metade para sua meta.\n• Em 12 meses isso vira R$ 6.000 sem contar rendimentos.',
+}
+
+function demoAnswer(question?: string): string {
+  if (question) return DEMO_ANSWERS[question] ?? 'Análise gerada para sua pergunta (modo demonstração).'
+  return `**Resumo geral**\nSua saúde financeira está em nível Bom (72/100). Você está poupando 37% da sua renda, o que é excelente.\n\n**Pontos positivos**\n• Taxa de poupança acima de 30% — parabéns!\n• Nenhuma conta em atraso crítico\n• Fundo de emergência em crescimento\n\n**Alertas**\n• Aluguel em atraso — regularize o quanto antes\n• Categoria Lazer estourou o orçamento em R$ 120,00\n\n**Recomendações**\n1. Pagar o aluguel hoje para evitar multa\n2. Reduzir lazer em R$ 200 no próximo mês\n3. Aumentar aporte no fundo de emergência para R$ 1.500/mês\n4. Revisar assinaturas — R$ 209/mês pode ser reduzido\n\n**Meta do mês**\nQuitar o aluguel atrasado e manter despesas de lazer abaixo de R$ 500.`
+}
+
 // ── AI Analysis Panel ─────────────────────────────────────────────────────────
 function AIAnalysisPanel({ financialData }: { financialData: unknown }) {
   const isDemo = useIsDemo()
@@ -115,14 +148,11 @@ function AIAnalysisPanel({ financialData }: { financialData: unknown }) {
   const [analysis, setAnalysis] = useState<string | null>(null)
   const [error, setError]       = useState('')
 
-  async function handleAnalyze() {
-    if (isDemo) {
-      setAnalysis(`**Resumo geral**\nSua saúde financeira está em nível Bom (72/100). Você está poupando 37% da sua renda, o que é excelente.\n\n**Pontos positivos**\n• Taxa de poupança acima de 30% — parabéns!\n• Nenhuma conta em atraso crítico\n• Fundo de emergência em crescimento\n\n**Alertas**\n• Aluguel em atraso — regularize o quanto antes\n• Categoria Lazer estourou o orçamento em R$ 120,00\n\n**Recomendações**\n1. Pagar o aluguel hoje para evitar multa\n2. Reduzir lazer em R$ 200 no próximo mês\n3. Aumentar aporte no fundo de emergência para R$ 1.500/mês\n4. Revisar assinaturas — R$ 209/mês pode ser reduzido\n\n**Meta do mês**\nQuitar o aluguel atrasado e manter despesas de lazer abaixo de R$ 500.`)
-      return
-    }
+  async function ask(question?: string) {
+    if (isDemo) { setAnalysis(demoAnswer(question)); return }
     setLoading(true); setError('')
     try {
-      const res = await api.ai.analyze(financialData) as { ok: boolean; data?: { analysis: string }; error?: string }
+      const res = await api.ai.analyze(financialData, question) as { ok: boolean; data?: { analysis: string }; error?: string }
       if (res.ok && res.data) setAnalysis(res.data.analysis)
       else setError(res.error ?? 'Erro ao gerar análise')
     } catch {
@@ -145,7 +175,7 @@ function AIAnalysisPanel({ financialData }: { financialData: unknown }) {
         </Typography>
         {!analysis ? (
           <Button
-            size="small" variant="outlined" onClick={handleAnalyze} disabled={loading}
+            size="small" variant="outlined" onClick={() => ask()} disabled={loading}
             startIcon={loading ? <CircularProgress size={12} /> : <SmartToyIcon sx={{ fontSize: 14 }} />}
             sx={{ fontSize: '0.72rem', borderColor: 'rgba(59,130,246,0.3)', color: KZ.blue, borderRadius: 1.5,
               '&:hover': { borderColor: KZ.blue, bgcolor: 'rgba(59,130,246,0.06)' } }}
@@ -159,9 +189,34 @@ function AIAnalysisPanel({ financialData }: { financialData: unknown }) {
       </Box>
 
       {!analysis && !loading && !error && (
-        <Typography sx={{ fontSize: '0.72rem', color: KZ.t3 }}>
-          Claude analisa seus dados financeiros e gera recomendações personalizadas para este mês.
+        <Typography sx={{ fontSize: '0.72rem', color: KZ.t3, mb: 1.5 }}>
+          Pergunte ao Kaizen ou peça uma análise completa do seu mês.
         </Typography>
+      )}
+
+      {/* Kaizen Insights — perguntas prontas */}
+      {!analysis && !loading && (
+        <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+          {INSIGHT_QUESTIONS.map(q => (
+            <Box
+              key={q} component={motion.div} whileTap={{ scale: 0.95 }} onClick={() => ask(q)}
+              sx={{
+                cursor: 'pointer', px: 1.4, py: 0.7, borderRadius: 2, fontSize: '0.72rem', fontWeight: 600,
+                color: KZ.blue, bgcolor: 'rgba(59,130,246,0.06)', border: `1px solid rgba(59,130,246,0.2)`,
+                '&:hover': { bgcolor: 'rgba(59,130,246,0.12)' },
+              }}
+            >
+              {q}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {loading && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+          <CircularProgress size={14} sx={{ color: KZ.blue }} />
+          <Typography sx={{ fontSize: '0.72rem', color: KZ.t3 }}>Pensando…</Typography>
+        </Box>
       )}
 
       {error && <Typography sx={{ fontSize: '0.72rem', color: KZ.red }}>{error}</Typography>}
@@ -189,6 +244,58 @@ function AIAnalysisPanel({ financialData }: { financialData: unknown }) {
         </motion.div>
       )}
     </Paper>
+  )
+}
+
+// ── Card "Resumo do mês" — frase inteligente ──────────────────────────────────
+function MonthSummaryCard({ sentence, positive }: { sentence: string; positive: boolean }) {
+  const color = positive ? KZ.green : KZ.red
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <Paper sx={{
+        p: { xs: 2.2, md: 2.6 }, position: 'relative', overflow: 'hidden',
+        background: `linear-gradient(135deg, ${color}0E 0%, rgba(6,10,14,0) 65%)`,
+        border: `1px solid ${color}2A`,
+      }}>
+        <Box sx={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle, ${color}14 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: color, boxShadow: `0 0 8px ${color}` }} />
+          <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: KZ.t2 }}>
+            Resumo do mês
+          </Typography>
+        </Box>
+        <Typography sx={{ fontSize: { xs: '1rem', md: '1.12rem' }, fontWeight: 700, color: KZ.t1, lineHeight: 1.45, letterSpacing: '-0.01em' }}>
+          {sentence}
+        </Typography>
+      </Paper>
+    </motion.div>
+  )
+}
+
+// ── Card de atenção (clicável) ────────────────────────────────────────────────
+function AttentionCard({ item, onClick }: { item: AttentionItem; onClick: () => void }) {
+  return (
+    <Box
+      component={motion.div} whileTap={{ scale: 0.97 }} onClick={onClick}
+      sx={{
+        flexShrink: 0, width: { xs: 230, md: 250 }, cursor: 'pointer',
+        p: 1.6, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 1.3,
+        background: `linear-gradient(135deg, ${item.color}12 0%, rgba(6,10,14,0) 70%)`,
+        border: `1px solid ${item.color}33`,
+      }}
+    >
+      <Box sx={{
+        width: 38, height: 38, flexShrink: 0, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '1.15rem', bgcolor: `${item.color}1A`, border: `1px solid ${item.color}33`,
+      }}>
+        {item.icon}
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: KZ.t1, lineHeight: 1.2 }} noWrap>{item.title}</Typography>
+        <Typography sx={{ fontSize: '0.66rem', color: KZ.t2, mt: 0.3, lineHeight: 1.25 }}>{item.sub}</Typography>
+      </Box>
+      <ChevronRightIcon sx={{ color: item.color, fontSize: 18, flexShrink: 0 }} />
+    </Box>
   )
 }
 
@@ -223,11 +330,14 @@ export default function DashboardPage() {
   const monthStr  = now.toISOString().slice(0, 7)
   const today     = now.toISOString().slice(0, 10)
 
+  const navigate = useNavigate()
+
   // Stores
   const accounts     = useAccountsStore(s => s.accounts)
   const storeBills   = useBillsStore(s => s.bills)
   const transactions = useTransactionsStore(s => s.transactions)
   const storeGoals   = useGoalsStore(s => s.goals)
+  const budgets      = useBudgetStore(s => s.budgets)
 
   // Demo data
   const demoData = useMemo<DashboardData>(() => ({
@@ -287,6 +397,86 @@ export default function DashboardPage() {
   const cashflow = data.monthIncome - data.monthExpense
   const greeting = now.getHours() < 12 ? 'Bom dia' : now.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
 
+  // ── O que precisa da sua atenção ──
+  const attention = useMemo<AttentionItem[]>(() => {
+    const items: AttentionItem[] = []
+
+    const overdue = data.bills.filter(b => b.daysLeft < 0)
+    if (data.overdueBills > 0) {
+      const total = overdue.reduce((s, b) => s + b.amount, 0)
+      items.push({
+        id: 'overdue', icon: '🚨', color: KZ.red,
+        title: `${data.overdueBills} conta${data.overdueBills > 1 ? 's' : ''} atrasada${data.overdueBills > 1 ? 's' : ''}`,
+        sub: total > 0 ? `${formatBRL(total)} · toque para regularizar` : 'Toque para regularizar',
+        path: '/app/bills',
+      })
+    }
+
+    const soon = data.bills.filter(b => b.daysLeft >= 0 && b.daysLeft <= 7)
+    if (soon.length > 0) {
+      const total = soon.reduce((s, b) => s + b.amount, 0)
+      items.push({
+        id: 'soon', icon: '📅', color: KZ.gold,
+        title: `${soon.length} vencendo em 7 dias`,
+        sub: `${formatBRL(total)} a pagar em breve`,
+        path: '/app/bills',
+      })
+    }
+
+    const over = budgets.filter(b => b.planned > 0 && b.spent > b.planned)
+    if (over.length > 0) {
+      const worst = [...over].sort((a, b) => (b.spent - b.planned) - (a.spent - a.planned))[0]
+      const cat = CAT_MAP[worst.categoryId]
+      items.push({
+        id: 'budget', icon: cat?.icon ?? '📊', color: KZ.red,
+        title: `${cat?.name ?? 'Categoria'} estourou`,
+        sub: `Passou ${formatBRL(worst.spent - worst.planned)} do limite`,
+        path: '/app/budget',
+      })
+    }
+
+    const lateGoal = storeGoals.find(g => g.status === 'active' && g.targetDate && g.targetDate < today && g.currentAmount < g.targetAmount)
+    if (lateGoal) {
+      items.push({
+        id: 'goal', icon: lateGoal.icon || '🎯', color: KZ.gold,
+        title: `Meta "${lateGoal.name}" atrasada`,
+        sub: 'Revise o aporte mensal',
+        path: '/app/goals',
+      })
+    }
+
+    const subsMap = new Map<string, number>()
+    for (const t of transactions) {
+      if (t.isRecurring && t.type === 'expense' && !subsMap.has(t.description)) subsMap.set(t.description, t.amount)
+    }
+    if (subsMap.size > 0) {
+      const total = [...subsMap.values()].reduce((s, a) => s + a, 0)
+      items.push({
+        id: 'subs', icon: '📡', color: KZ.blue,
+        title: `${subsMap.size} assinatura${subsMap.size > 1 ? 's' : ''} recorrente${subsMap.size > 1 ? 's' : ''}`,
+        sub: `${formatBRL(total)}/mês · toque para revisar`,
+        path: '/app/subscriptions',
+      })
+    }
+
+    return items
+  }, [data, budgets, storeGoals, transactions, today])
+
+  // ── Frase do resumo do mês ──
+  const summary = useMemo(() => {
+    const positive = cashflow >= 0
+    const soonCount = data.bills.filter(b => b.daysLeft >= 0 && b.daysLeft <= 7).length
+    let s = positive
+      ? `Você está com saldo positivo de ${formatBRL(cashflow)} este mês`
+      : `Atenção: suas despesas superaram as receitas em ${formatBRL(Math.abs(cashflow))} este mês`
+    const tails: string[] = []
+    if (data.overdueBills > 0) tails.push(`${data.overdueBills} conta${data.overdueBills > 1 ? 's' : ''} atrasada${data.overdueBills > 1 ? 's' : ''}`)
+    if (soonCount > 0) tails.push(`${soonCount} vencendo nos próximos dias`)
+    if (tails.length) s += `, mas tem ${tails.join(' e ')}`
+    else if (positive) s += ' e nenhuma conta pendente urgente'
+    return { sentence: s + '.', positive }
+  }, [cashflow, data.bills, data.overdueBills])
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 1400, mx: 'auto' }}>
 
@@ -319,6 +509,9 @@ export default function DashboardPage() {
         </Box>
       </motion.div>
 
+      {/* ── Resumo do mês ── */}
+      <MonthSummaryCard sentence={summary.sentence} positive={summary.positive} />
+
       {/* ── KPI Row ── */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', md: 'repeat(4,1fr)' }, gap: 1.5 }}>
         {[
@@ -332,6 +525,28 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </Box>
+
+      {/* ── O que precisa da sua atenção ── */}
+      {attention.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
+            <WarningAmberIcon sx={{ fontSize: 15, color: KZ.gold }} />
+            <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: KZ.t2 }}>
+              O que precisa da sua atenção
+            </Typography>
+          </Box>
+          <Box sx={{
+            display: 'flex', gap: 1.2, overflowX: 'auto', pb: 0.5,
+            '&::-webkit-scrollbar': { display: 'none' },
+            // Em telas grandes, quebra em grade
+            '@media (min-width:900px)': { flexWrap: 'wrap', overflowX: 'visible' },
+          }}>
+            {attention.map(item => (
+              <AttentionCard key={item.id} item={item} onClick={() => navigate(item.path)} />
+            ))}
+          </Box>
+        </motion.div>
+      )}
 
       {/* ── Grid principal ── */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr', xl: '2fr 1.2fr 1fr' }, gap: 2 }}>

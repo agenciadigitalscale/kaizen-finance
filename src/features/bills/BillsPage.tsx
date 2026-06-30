@@ -27,6 +27,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   educacao: '📚', lazer: '🎬', assinatura: '📱', outros: '📦',
 }
 
+type TabKey = 'overdue' | 'today' | 'week' | 'month' | 'paid'
+
 function getDaysLeft(dueDate: string): number {
   const due  = new Date(dueDate)
   const now  = new Date()
@@ -213,27 +215,41 @@ function BillDialog({ open, bill, onClose, onSave }: {
 export default function BillsPage() {
   const { bills, addBill, updateBill, deleteBill, payBill } = useBillsStore()
   const [dialog, setDialog]     = useState<{ open: boolean; bill: Partial<Bill> | null }>({ open: false, bill: null })
-  const [filter, setFilter]     = useState<'all' | 'pending' | 'overdue' | 'paid'>('all')
+  const [tab, setTab]           = useState<TabKey>('month')
+  const monthStr = new Date().toISOString().slice(0, 7)
 
   const stats = useMemo(() => {
-    const pending  = bills.filter(b => b.status === 'pending')
-    const overdue  = bills.filter(b => b.status !== 'paid' && getDaysLeft(b.dueDate) < 0)
-    const upcoming = bills.filter(b => b.status === 'pending' && getDaysLeft(b.dueDate) >= 0 && getDaysLeft(b.dueDate) <= 7)
-    return {
-      totalPending:  pending.reduce((s, b) => s + b.amount, 0),
-      totalOverdue:  overdue.reduce((s, b) => s + b.amount, 0),
-      upcomingCount: upcoming.length,
-      overdueCount:  overdue.length,
+    let overdueCount = 0, todayCount = 0, weekCount = 0, monthCount = 0, paidCount = 0
+    let totalOverdue = 0, totalMonth = 0
+    for (const b of bills) {
+      if (b.status === 'paid') { paidCount++; continue }
+      const d = getDaysLeft(b.dueDate)
+      if (d < 0)       { overdueCount++; totalOverdue += b.amount }
+      else if (d === 0) todayCount++
+      else if (d <= 7)  weekCount++
+      if (b.dueDate.slice(0, 7) === monthStr) { monthCount++; totalMonth += b.amount }
     }
-  }, [bills])
+    return { overdueCount, todayCount, weekCount, monthCount, paidCount, totalOverdue, totalMonth }
+  }, [bills, monthStr])
 
   const filtered = useMemo(() => {
     const sorted = [...bills].sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-    if (filter === 'overdue') return sorted.filter(b => getDaysLeft(b.dueDate) < 0 && b.status !== 'paid')
-    if (filter === 'pending') return sorted.filter(b => b.status === 'pending' && getDaysLeft(b.dueDate) >= 0)
-    if (filter === 'paid')    return sorted.filter(b => b.status === 'paid')
-    return sorted
-  }, [bills, filter])
+    switch (tab) {
+      case 'overdue': return sorted.filter(b => b.status !== 'paid' && getDaysLeft(b.dueDate) < 0)
+      case 'today':   return sorted.filter(b => b.status !== 'paid' && getDaysLeft(b.dueDate) === 0)
+      case 'week':    return sorted.filter(b => { const d = getDaysLeft(b.dueDate); return b.status !== 'paid' && d >= 1 && d <= 7 })
+      case 'month':   return sorted.filter(b => b.status !== 'paid' && b.dueDate.slice(0, 7) === monthStr)
+      case 'paid':    return sorted.filter(b => b.status === 'paid')
+    }
+  }, [bills, tab, monthStr])
+
+  const TABS: { key: TabKey; label: string; count: number; danger?: boolean }[] = [
+    { key: 'overdue', label: 'Atrasadas', count: stats.overdueCount, danger: true },
+    { key: 'today',   label: 'Hoje',      count: stats.todayCount },
+    { key: 'week',    label: '7 dias',    count: stats.weekCount },
+    { key: 'month',   label: 'Este mês',  count: stats.monthCount },
+    { key: 'paid',    label: 'Pagas',     count: stats.paidCount },
+  ]
 
   function handlePay(id: string) { payBill(id) }
   function handleDelete(id: string) { deleteBill(id) }
@@ -263,9 +279,9 @@ export default function BillsPage() {
       {/* Summary cards */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 2.5 }}>
         {[
-          { label: 'A pagar (mês)', value: formatBRL(stats.totalPending), color: KZ.gold, icon: '📋', sub: `${bills.filter(b => b.status === 'pending').length} contas` },
-          { label: 'Em atraso', value: formatBRL(stats.totalOverdue), color: KZ.red, icon: '⚠️', sub: `${stats.overdueCount} contas` },
-          { label: 'Próximos 7 dias', value: String(stats.upcomingCount), color: KZ.blue, icon: '📅', sub: 'vencimentos' },
+          { label: 'A pagar (mês)', value: formatBRL(stats.totalMonth), color: KZ.gold, icon: '📋', sub: `${stats.monthCount} conta${stats.monthCount !== 1 ? 's' : ''}` },
+          { label: 'Em atraso', value: formatBRL(stats.totalOverdue), color: KZ.red, icon: '⚠️', sub: `${stats.overdueCount} conta${stats.overdueCount !== 1 ? 's' : ''}` },
+          { label: 'Próximos 7 dias', value: String(stats.weekCount), color: KZ.blue, icon: '📅', sub: 'vencimentos' },
         ].map((card, i) => (
           <motion.div key={card.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Paper sx={{ p: 2, border: `1px solid ${card.color}18`, background: `linear-gradient(135deg, ${card.color}06 0%, transparent 100%)` }}>
@@ -280,36 +296,72 @@ export default function BillsPage() {
         ))}
       </Box>
 
-      {/* Filters */}
-      <Box sx={{ display: 'flex', gap: 0.8, mb: 2, flexWrap: 'wrap' }}>
-        {([['all', 'Todas'], ['pending', 'Pendentes'], ['overdue', 'Atrasadas'], ['paid', 'Pagas']] as const).map(([key, label]) => (
-          <Chip key={key} label={label} onClick={() => setFilter(key)} size="small"
-            sx={{
-              fontWeight: 600, fontSize: '0.72rem', cursor: 'pointer', transition: 'all 0.15s',
-              ...(filter === key
-                ? { bgcolor: 'rgba(16,185,129,0.15)', color: KZ.green, border: `1px solid rgba(16,185,129,0.35)` }
-                : { bgcolor: 'rgba(255,255,255,0.04)', color: KZ.t2, border: `1px solid ${KZ.border}` }
-              ),
-            }}
-          />
-        ))}
+      {/* Abas */}
+      <Box sx={{
+        display: 'flex', gap: 0.8, mb: 2, overflowX: 'auto', pb: 0.5,
+        '&::-webkit-scrollbar': { display: 'none' },
+      }}>
+        {TABS.map(t => {
+          const active = tab === t.key
+          const isDanger = t.danger && t.count > 0
+          const activeColor = isDanger ? KZ.red : KZ.green
+          return (
+            <Box
+              key={t.key} component={motion.div} whileTap={{ scale: 0.95 }}
+              onClick={() => setTab(t.key)}
+              sx={{
+                flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.7, cursor: 'pointer',
+                px: 1.6, py: 0.9, borderRadius: 2.5, transition: 'all 0.15s',
+                ...(active
+                  ? { bgcolor: `${activeColor}26`, border: `1px solid ${activeColor}` }
+                  : { bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${KZ.border}` }),
+              }}
+            >
+              <Typography sx={{ fontSize: '0.78rem', fontWeight: active ? 700 : 600, color: active ? activeColor : KZ.t2 }}>
+                {t.label}
+              </Typography>
+              {t.count > 0 && (
+                <Box sx={{
+                  minWidth: 18, height: 18, px: 0.5, borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  bgcolor: isDanger ? KZ.red : active ? KZ.green : 'rgba(255,255,255,0.12)',
+                  color: (isDanger || active) ? '#fff' : KZ.t2,
+                }}>
+                  <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, lineHeight: 1 }}>{t.count}</Typography>
+                </Box>
+              )}
+            </Box>
+          )
+        })}
       </Box>
 
       {/* Bills list */}
       <Paper sx={{ p: 1.5 }}>
-        {stats.overdueCount > 0 && filter !== 'paid' && filter !== 'pending' && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.8, mb: 1, borderRadius: 1.5, bgcolor: 'rgba(239,68,68,0.06)', border: `1px solid rgba(239,68,68,0.15)` }}>
-            <WarningAmberIcon sx={{ fontSize: 14, color: KZ.red }} />
-            <Typography sx={{ fontSize: '0.72rem', color: KZ.red, fontWeight: 600 }}>
-              {stats.overdueCount} conta{stats.overdueCount > 1 ? 's' : ''} em atraso — total: {formatBRL(stats.totalOverdue)}
+        {stats.overdueCount > 0 && tab !== 'paid' && tab !== 'overdue' && (
+          <Box
+            component={motion.div} whileTap={{ scale: 0.99 }} onClick={() => setTab('overdue')}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.2, py: 1, mb: 1, borderRadius: 2, cursor: 'pointer',
+              bgcolor: 'rgba(239,68,68,0.08)', border: `1px solid rgba(239,68,68,0.25)` }}>
+            <WarningAmberIcon sx={{ fontSize: 16, color: KZ.red }} />
+            <Typography sx={{ fontSize: '0.74rem', color: KZ.red, fontWeight: 700, flex: 1 }}>
+              {stats.overdueCount} conta{stats.overdueCount > 1 ? 's' : ''} em atraso — {formatBRL(stats.totalOverdue)}
             </Typography>
+            <Typography sx={{ fontSize: '0.68rem', color: KZ.red, fontWeight: 700 }}>ver →</Typography>
           </Box>
         )}
         <AnimatePresence>
           {filtered.length === 0 ? (
-            <Box sx={{ py: 4, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: '1.5rem' }}>✅</Typography>
-              <Typography sx={{ fontSize: '0.8rem', color: KZ.t3, mt: 1 }}>Nenhuma conta neste filtro</Typography>
+            <Box sx={{ py: 5, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: '1.8rem' }}>{tab === 'overdue' || tab === 'today' ? '🎉' : tab === 'paid' ? '🧾' : '✅'}</Typography>
+              <Typography sx={{ fontSize: '0.82rem', color: KZ.t2, mt: 1, fontWeight: 600 }}>
+                {tab === 'overdue' ? 'Nenhuma conta atrasada' :
+                 tab === 'today'   ? 'Nada vence hoje' :
+                 tab === 'week'    ? 'Nada nos próximos 7 dias' :
+                 tab === 'paid'    ? 'Nenhuma conta paga ainda' :
+                                     'Nenhuma conta neste mês'}
+              </Typography>
+              <Typography sx={{ fontSize: '0.7rem', color: KZ.t3, mt: 0.5 }}>
+                {tab === 'paid' ? 'Marque uma conta como paga para vê-la aqui.' : 'Tudo em dia por aqui. 👌'}
+              </Typography>
             </Box>
           ) : (
             filtered.map(bill => (

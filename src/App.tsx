@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Box, Typography, useMediaQuery, BottomNavigation, BottomNavigationAction, Paper, Tooltip, Avatar } from '@mui/material'
+import { Box, Typography, useMediaQuery, Tooltip, Avatar } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect } from 'react'
@@ -13,6 +13,7 @@ import BarChartIcon       from '@mui/icons-material/BarChart'
 import WaterfallChartIcon from '@mui/icons-material/WaterfallChart'
 import CreditCardIcon     from '@mui/icons-material/CreditCard'
 import RadarIcon          from '@mui/icons-material/Radar'
+import GroupsIcon         from '@mui/icons-material/Groups'
 import LogoutIcon         from '@mui/icons-material/Logout'
 import { useAuthStore, useUser, useHousehold, useIsDemo } from '@/features/auth/authStore'
 import { api } from '@/shared/lib/api'
@@ -35,23 +36,25 @@ import ReportsPage          from '@/features/reports/ReportsPage'
 import CashflowPage         from '@/features/cashflow/CashflowPage'
 import AccountsPage         from '@/features/accounts/AccountsPage'
 import SubscriptionsPage    from '@/features/subscriptions/SubscriptionsPage'
+import FamilyPage           from '@/features/family/FamilyPage'
+import QuickLaunchSheet     from '@/shared/components/QuickLaunchSheet'
+import MobileBottomNav      from '@/shared/components/MobileBottomNav'
+import BrandMark            from '@/shared/components/BrandMark'
 import { KZ, KZ_GRADIENTS } from '@/theme'
 
 const NAV = [
-  { label: 'Dashboard',    icon: <DashboardIcon />,      path: '/app' },
-  { label: 'Contas',       icon: <ReceiptIcon />,         path: '/app/bills' },
-  { label: 'Lançamentos',  icon: <SyncAltIcon />,         path: '/app/transactions' },
-  { label: 'Orçamento',    icon: <DonutLargeIcon />,      path: '/app/budget' },
-  { label: 'Metas',        icon: <EmojiEventsIcon />,     path: '/app/goals' },
-  { label: 'Patrimônio',   icon: <AccountBalanceIcon />,  path: '/app/patrimony' },
-  { label: 'Relatórios',   icon: <BarChartIcon />,        path: '/app/reports' },
-  { label: 'Caixa',        icon: <WaterfallChartIcon />,  path: '/app/cashflow' },
-  { label: 'Carteiras',    icon: <CreditCardIcon />,      path: '/app/accounts' },
-  { label: 'Assinaturas',  icon: <RadarIcon />,           path: '/app/subscriptions' },
+  { label: 'Início',             icon: <DashboardIcon />,      path: '/app' },
+  { label: 'Contas a pagar',     icon: <ReceiptIcon />,         path: '/app/bills' },
+  { label: 'Entradas e saídas',  icon: <SyncAltIcon />,         path: '/app/transactions' },
+  { label: 'Orçamento',          icon: <DonutLargeIcon />,      path: '/app/budget' },
+  { label: 'Metas',              icon: <EmojiEventsIcon />,     path: '/app/goals' },
+  { label: 'Patrimônio',         icon: <AccountBalanceIcon />,  path: '/app/patrimony' },
+  { label: 'Relatórios',         icon: <BarChartIcon />,        path: '/app/reports' },
+  { label: 'Previsão de caixa',  icon: <WaterfallChartIcon />,  path: '/app/cashflow' },
+  { label: 'Minhas contas',      icon: <CreditCardIcon />,      path: '/app/accounts' },
+  { label: 'Assinaturas',        icon: <RadarIcon />,           path: '/app/subscriptions' },
+  { label: 'Família',            icon: <GroupsIcon />,          path: '/app/family' },
 ]
-
-// Bottom nav shows first 5 most important items
-const BOTTOM_NAV = NAV.slice(0, 5)
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useUser()
@@ -69,9 +72,6 @@ function AppShell() {
   const logout    = useAuthStore(s => s.logout)
 
   const activeIdx = NAV.findIndex(n =>
-    n.path === '/app' ? location.pathname === '/app' : location.pathname.startsWith(n.path)
-  )
-  const bottomIdx = BOTTOM_NAV.findIndex(n =>
     n.path === '/app' ? location.pathname === '/app' : location.pathname.startsWith(n.path)
   )
 
@@ -140,6 +140,17 @@ function AppShell() {
     <Box sx={{ display: 'flex', height: '100dvh', bgcolor: KZ.bg }}>
       {isDesktop && sidebar}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Barra superior com a marca — só mobile */}
+        {!isDesktop && (
+          <Box sx={{
+            height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderBottom: `1px solid ${KZ.border}`,
+            background: 'rgba(6,10,14,0.92)', backdropFilter: 'blur(20px)',
+            pt: 'env(safe-area-inset-top)',
+          }}>
+            <BrandMark size={20} />
+          </Box>
+        )}
         <Box sx={{ flex: 1, overflowY: 'auto' }}>
           <AnimatePresence mode="wait">
             <motion.div
@@ -160,26 +171,18 @@ function AppShell() {
                 <Route path="/cashflow"      element={<CashflowPage />} />
                 <Route path="/accounts"      element={<AccountsPage />} />
                 <Route path="/subscriptions" element={<SubscriptionsPage />} />
+                <Route path="/family"        element={<FamilyPage />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
         </Box>
 
-        {/* Mobile bottom nav */}
-        {!isDesktop && (
-          <Paper elevation={0} square sx={{ borderTop: `1px solid ${KZ.border}` }}>
-            <BottomNavigation
-              value={bottomIdx >= 0 ? bottomIdx : false}
-              onChange={(_, v) => navigate(BOTTOM_NAV[v]?.path ?? '/app')}
-              sx={{ bgcolor: 'rgba(8,12,18,0.99)', height: 60 }}
-            >
-              {BOTTOM_NAV.map((item, i) => (
-                <BottomNavigationAction key={item.path} label={item.label} value={i} icon={item.icon} />
-              ))}
-            </BottomNavigation>
-          </Paper>
-        )}
+        {/* Mobile bottom nav com FAB central + drawer "Mais" */}
+        {!isDesktop && <MobileBottomNav />}
       </Box>
+
+      {/* Lançamento rápido — disponível em todas as telas do app */}
+      <QuickLaunchSheet />
     </Box>
   )
 }

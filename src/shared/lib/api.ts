@@ -1,10 +1,17 @@
 import { useAuthStore } from '@/features/auth/authStore'
 
+// No app nativo (Capacitor) o front roda em localhost/capacitor:// — a API precisa
+// apontar para o backend de produção. Na web, base vazia = mesma origem (relativo).
+const isNative = typeof window !== 'undefined' &&
+  (window.location.protocol === 'capacitor:' || window.location.protocol === 'ionic:' ||
+   (window.location.hostname === 'localhost' && window.location.port === ''))
+export const API_BASE = isNative ? 'https://kaizen-43x.pages.dev' : ''
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function request<T = any>(url: string, options?: RequestInit): Promise<T> {
   const token = useAuthStore.getState().accessToken
 
-  const res = await fetch(url, {
+  const res = await fetch(API_BASE + url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -15,11 +22,11 @@ async function request<T = any>(url: string, options?: RequestInit): Promise<T> 
   })
 
   if (res.status === 401) {
-    const refresh = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+    const refresh = await fetch(API_BASE + '/api/auth/refresh', { method: 'POST', credentials: 'include' })
     const rd = await refresh.json() as { ok: boolean; data?: { accessToken: string } }
     if (rd.ok && rd.data?.accessToken) {
       useAuthStore.getState().setToken(rd.data.accessToken)
-      const retry = await fetch(url, {
+      const retry = await fetch(API_BASE + url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
@@ -96,6 +103,10 @@ export const api = {
   },
 
   ai: {
-    analyze: (financialData: unknown) => request('/api/ai', { method: 'POST', body: JSON.stringify({ financialData }) }),
+    analyze: (financialData: unknown, question?: string) => request('/api/ai', { method: 'POST', body: JSON.stringify({ financialData, question }) }),
+  },
+
+  voice: {
+    parse: (transcript: string) => request('/api/voice', { method: 'POST', body: JSON.stringify({ transcript }) }),
   },
 }

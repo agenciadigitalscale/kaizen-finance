@@ -133,7 +133,7 @@ function Hero({ onCTA }: { onCTA: () => void }) {
                 boxShadow: '0 8px 32px rgba(16,185,129,0.35)',
                 '&:hover': { filter: 'brightness(1.1)', transform: 'translateY(-2px)', boxShadow: '0 12px 40px rgba(16,185,129,0.45)' },
               }}>
-              Começar 14 dias grátis
+              Começar 7 dias grátis
             </Button>
             <Button variant="outlined" size="large"
               onClick={() => document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' })}
@@ -147,7 +147,7 @@ function Hero({ onCTA }: { onCTA: () => void }) {
         <FadeUp delay={0.28}>
           <Box sx={{ display: 'flex', gap: { xs: 2, md: 4 }, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              { value: '14 dias', label: 'grátis sem cartão' },
+              { value: '7 dias', label: 'grátis para testar' },
               { value: 'R$ 0', label: 'para começar' },
               { value: '100%', label: 'seguro e privado' },
             ].map(s => (
@@ -445,7 +445,7 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
               boxShadow: '0 0 60px rgba(16,185,129,0.08)',
             }}>
               <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: KZ_GRADIENTS.green }} />
-              <Chip label="14 dias grátis" size="small"
+              <Chip label="7 dias grátis" size="small"
                 sx={{ mb: 2.5, bgcolor: 'rgba(16,185,129,0.12)', color: KZ.green, border: `1px solid rgba(16,185,129,0.25)`, fontWeight: 700, fontSize: '0.7rem' }} />
               <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, mb: 0.5 }}>{plan.name}</Typography>
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.8, mb: 0.5 }}>
@@ -458,7 +458,7 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
                 sx={{ background: KZ_GRADIENTS.green, borderRadius: 2.5, fontWeight: 700, fontSize: '1rem', py: 1.5, mb: 3,
                   boxShadow: '0 8px 24px rgba(16,185,129,0.3)',
                   '&:hover': { filter: 'brightness(1.1)', transform: 'translateY(-1px)' } }}>
-                Começar 14 dias grátis
+                Começar 7 dias grátis
               </Button>
 
               <Divider sx={{ mb: 3 }} />
@@ -486,7 +486,7 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
 
 // ── FAQ ───────────────────────────────────────────────────────────────────────
 const FAQS = [
-  { q: 'Precisa de cartão para o trial?', a: 'Não. O trial de 14 dias é 100% gratuito e sem necessidade de cartão de crédito. Você só cadastra o pagamento se quiser continuar após o período.' },
+  { q: 'Como funciona o período grátis?', a: 'Você tem 7 dias grátis para testar tudo. Pedimos o cartão na entrada para garantir a continuidade: se você gostar, a assinatura começa automaticamente no 8º dia. Não quer continuar? É só cancelar antes do fim do período e nada é cobrado.' },
   { q: 'Os dados são seguros?', a: 'Sim. Usamos criptografia PBKDF2 para senhas e JWT para autenticação. Seus dados financeiros ficam em banco isolado por família, no Cloudflare D1.' },
   { q: 'Posso usar com meu cônjuge/parceiro(a)?', a: 'Sim! O modo parceria é nativo no Kaizen. Dois usuários podem compartilhar a mesma casa (household) e ver tanto as despesas individuais quanto o panorama familiar.' },
   { q: 'O app funciona offline?', a: 'Sim. O Kaizen é um PWA instalável no celular. Você pode visualizar dados offline e sincroniza quando voltar a ter internet.' },
@@ -544,7 +544,7 @@ function FinalCTA({ onCTA }: { onCTA: () => void }) {
             </Box>
           </Typography>
           <Typography sx={{ fontSize: '1rem', color: KZ.t2, mb: 4, lineHeight: 1.7 }}>
-            14 dias grátis, sem cartão. Você vai saber em menos de 1 semana se o Kaizen vai transformar sua vida financeira.
+            7 dias grátis. Você vai saber em menos de 1 semana se o Kaizen vai transformar sua vida financeira. Cancele quando quiser.
           </Typography>
           <Button variant="contained" size="large" onClick={onCTA} endIcon={<ArrowForwardIcon />}
             sx={{
@@ -556,7 +556,7 @@ function FinalCTA({ onCTA }: { onCTA: () => void }) {
             Criar conta gratuita
           </Button>
           <Typography sx={{ mt: 2, fontSize: '0.72rem', color: KZ.t3 }}>
-            Sem cartão · Cancele quando quiser · Dados 100% privados
+            7 dias grátis · Cancele quando quiser · Dados 100% privados
           </Typography>
         </Box>
       </FadeUp>
