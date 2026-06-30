@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from './authStore'
 import { api } from '@/shared/lib/api'
 import { KZ, KZ_GRADIENTS } from '@/theme'
+import KaizenEmblem from '@/shared/components/KaizenEmblem'
 
 type Mode = 'login' | 'signup'
 
@@ -82,13 +83,8 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Box sx={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 52, height: 52, borderRadius: '16px', mb: 2,
-            background: KZ_GRADIENTS.green,
-            boxShadow: '0 8px 32px rgba(16,185,129,0.35)',
-          }}>
-            <Typography sx={{ fontSize: '1.5rem', lineHeight: 1 }}>💹</Typography>
+          <Box sx={{ display: 'inline-flex', mb: 2 }}>
+            <KaizenEmblem size={72} />
           </Box>
           <Typography sx={{
             fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.04em',

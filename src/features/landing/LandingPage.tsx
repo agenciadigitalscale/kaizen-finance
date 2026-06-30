@@ -17,6 +17,7 @@ import SmartToyIcon        from '@mui/icons-material/SmartToy'
 import WaterfallChartIcon  from '@mui/icons-material/WaterfallChart'
 import EmojiEventsIcon     from '@mui/icons-material/EmojiEvents'
 import { KZ, KZ_GRADIENTS } from '@/theme'
+import KaizenEmblem from '@/shared/components/KaizenEmblem'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const FadeUp = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
@@ -62,8 +63,8 @@ function Navbar({ onCTA }: { onCTA: () => void }) {
     }}>
       {/* Logo */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-        <Box sx={{ width: 30, height: 30, borderRadius: '9px', background: KZ_GRADIENTS.green, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(16,185,129,0.35)' }}>
-          <Typography sx={{ fontSize: '0.85rem' }}>💹</Typography>
+        <Box sx={{ display: 'flex', flexShrink: 0 }}>
+          <KaizenEmblem size={32} />
         </Box>
         <Typography sx={{ fontWeight: 900, fontSize: '1rem', background: KZ_GRADIENTS.green, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>
           Kaizen Finance
@@ -570,8 +571,8 @@ function Footer() {
     <Box sx={{ borderTop: `1px solid ${KZ.border}`, py: 4, px: { xs: 2, md: 6 } }}>
       <Box sx={{ maxWidth: 1100, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 24, height: 24, borderRadius: '7px', background: KZ_GRADIENTS.green, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography sx={{ fontSize: '0.65rem' }}>💹</Typography>
+          <Box sx={{ display: 'flex', flexShrink: 0 }}>
+            <KaizenEmblem size={26} />
           </Box>
           <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: KZ.t2 }}>Kaizen Finance</Typography>
         </Box>

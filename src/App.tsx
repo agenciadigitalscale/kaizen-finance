@@ -40,6 +40,7 @@ import FamilyPage           from '@/features/family/FamilyPage'
 import QuickLaunchSheet     from '@/shared/components/QuickLaunchSheet'
 import MobileBottomNav      from '@/shared/components/MobileBottomNav'
 import BrandMark            from '@/shared/components/BrandMark'
+import KaizenEmblem         from '@/shared/components/KaizenEmblem'
 import { KZ, KZ_GRADIENTS } from '@/theme'
 
 const NAV = [
@@ -83,8 +84,8 @@ function AppShell() {
     }}>
       {/* Logo */}
       <Box sx={{ px: 2.2, py: 2, borderBottom: `1px solid ${KZ.border}`, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{ width: 34, height: 34, borderRadius: '10px', flexShrink: 0, background: KZ_GRADIENTS.green, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
-          <Typography sx={{ fontSize: '1rem', lineHeight: 1 }}>💹</Typography>
+        <Box sx={{ flexShrink: 0, display: 'flex' }}>
+          <KaizenEmblem size={36} />
         </Box>
         <Box>
           <Typography sx={{ fontWeight: 900, fontSize: '0.9rem', letterSpacing: '-0.02em', background: KZ_GRADIENTS.green, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -146,8 +147,9 @@ function AppShell() {
             height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderBottom: `1px solid ${KZ.border}`,
             background: 'rgba(6,10,14,0.92)', backdropFilter: 'blur(20px)',
-            pt: 'env(safe-area-inset-top)',
+            pt: 'env(safe-area-inset-top)', gap: 1,
           }}>
+            <KaizenEmblem size={30} />
             <BrandMark size={20} />
           </Box>
         )}

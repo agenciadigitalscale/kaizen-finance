@@ -13,6 +13,7 @@ import { useBillsStore } from '@/shared/stores/billsStore'
 import { useGoalsStore } from '@/shared/stores/goalsStore'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
 import { useProfileStore, type HouseholdMode } from '@/shared/stores/profileStore'
+import KaizenEmblem from '@/shared/components/KaizenEmblem'
 import type { AccountType } from '@/types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
@@ -61,8 +62,8 @@ const ACCOUNT_TYPES: { value: AccountType; label: string; icon: string }[] = [
 function StepWelcome({ name, onNext }: { name: string; onNext: () => void }) {
   return (
     <Box sx={{ textAlign: 'center', py: 2 }}>
-      <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', duration: 0.6 }}>
-        <Typography sx={{ fontSize: '4rem', mb: 2 }}>💹</Typography>
+      <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', duration: 0.6 }} style={{ display: 'inline-flex', marginBottom: 16 }}>
+        <KaizenEmblem size={96} />
       </motion.div>
       <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.03em', mb: 1 }}>
         Boa vinda, {name}!
