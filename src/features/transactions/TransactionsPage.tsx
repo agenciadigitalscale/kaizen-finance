@@ -15,17 +15,16 @@ import SearchIcon       from '@mui/icons-material/Search'
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore'
 import NavigateNextIcon   from '@mui/icons-material/NavigateNext'
 import { KZ, KZ_GRADIENTS } from '@/theme'
-import { formatBRL, type Transaction, type TransactionType, DEFAULT_CATEGORIES } from '@/types'
+import { formatBRL, type Transaction, type TransactionType } from '@/types'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import { getCategoryMeta, useAllCategories } from '@/shared/stores/categoriesStore'
 import VoiceInput from './VoiceInput'
 
-const CAT_MAP = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [c.group, c]))
-
 function getCatIcon(categoryId: string) {
-  return CAT_MAP[categoryId]?.icon ?? '📦'
+  return getCategoryMeta(categoryId).icon
 }
 function getCatColor(categoryId: string) {
-  return CAT_MAP[categoryId]?.color ?? KZ.t3
+  return getCategoryMeta(categoryId).color
 }
 
 const TYPE_ICON = {
@@ -116,6 +115,7 @@ function TxDialog({ open, tx, onClose, onSave }: {
 }) {
   const [form, setForm] = useState<Partial<Transaction>>(tx ?? EMPTY_TX)
   const [amountStr, setAmountStr] = useState(tx?.amount ? (tx.amount / 100).toFixed(2) : '')
+  const cats = useAllCategories(form.type === 'income' ? 'income' : 'expense')
 
   const up = <K extends keyof Transaction>(k: K, v: Transaction[K]) => setForm(p => ({ ...p, [k]: v }))
 
@@ -145,8 +145,8 @@ function TxDialog({ open, tx, onClose, onSave }: {
         <FormControl size="small" fullWidth>
           <InputLabel>Categoria</InputLabel>
           <Select value={form.categoryId} label="Categoria" onChange={e => up('categoryId', e.target.value)}>
-            {DEFAULT_CATEGORIES.filter(c => form.type === 'income' ? c.type === 'income' : c.type === 'expense').map(c => (
-              <MenuItem key={c.group} value={c.group}>{c.icon} {c.name}</MenuItem>
+            {cats.map(c => (
+              <MenuItem key={c.id} value={c.id}>{c.icon} {c.name}</MenuItem>
             ))}
           </Select>
         </FormControl>

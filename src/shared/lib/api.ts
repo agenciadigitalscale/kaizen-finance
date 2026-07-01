@@ -94,6 +94,13 @@ export const api = {
     upsert: (data: unknown) => request('/api/budgets', { method: 'POST', body: JSON.stringify(data) }),
   },
 
+  categories: {
+    list:   () => request('/api/categories'),
+    create: (data: unknown) => request('/api/categories', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: unknown) => request(`/api/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) => request(`/api/categories/${id}`, { method: 'DELETE' }),
+  },
+
   patrimony: {
     list:             ()                    => request('/api/patrimony'),
     createAsset:      (data: unknown)       => request('/api/patrimony/assets', { method: 'POST', body: JSON.stringify(data) }),

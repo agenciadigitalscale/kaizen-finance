@@ -7,23 +7,14 @@ import CloseIcon  from '@mui/icons-material/Close'
 import CheckIcon  from '@mui/icons-material/Check'
 import { motion } from 'framer-motion'
 import { KZ, KZ_GRADIENTS } from '@/theme'
-import { DEFAULT_CATEGORIES, formatBRL, type TransactionType } from '@/types'
+import { formatBRL, type TransactionType } from '@/types'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
 import { useAccountsStore } from '@/shared/stores/accountsStore'
 import { useUiStore } from '@/shared/stores/uiStore'
+import { useAllCategories } from '@/shared/stores/categoriesStore'
 import VoiceInput from '@/features/transactions/VoiceInput'
 
 const today = () => new Date().toISOString().slice(0, 10)
-
-// Categorias únicas por grupo (id = group), separadas por tipo
-const expenseCats = dedupe(DEFAULT_CATEGORIES.filter(c => c.type === 'expense'))
-const incomeCats  = dedupe(DEFAULT_CATEGORIES.filter(c => c.type === 'income'))
-function dedupe(list: typeof DEFAULT_CATEGORIES) {
-  const seen = new Set<string>()
-  return list
-    .filter(c => (seen.has(c.group) ? false : (seen.add(c.group), true)))
-    .map(c => ({ id: c.group, name: c.name, icon: c.icon }))
-}
 
 // Atalhos rápidos: prefill de tipo + categoria + descrição
 const SHORTCUTS: { label: string; icon: string; type: TransactionType; categoryId: string; description: string }[] = [
@@ -54,7 +45,7 @@ export default function QuickLaunchSheet() {
   const [status, setStatus]           = useState<'confirmed' | 'pending'>('confirmed')
   const [saved, setSaved]             = useState(false)
 
-  const cats = type === 'income' ? incomeCats : expenseCats
+  const cats = useAllCategories(type === 'income' ? 'income' : 'expense')
 
   // Default da conta quando carregar / reabrir
   useEffect(() => {

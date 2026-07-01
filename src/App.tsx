@@ -15,6 +15,7 @@ import CreditCardIcon     from '@mui/icons-material/CreditCard'
 import RadarIcon          from '@mui/icons-material/Radar'
 import GroupsIcon         from '@mui/icons-material/Groups'
 import SettingsIcon       from '@mui/icons-material/Settings'
+import CategoryIcon       from '@mui/icons-material/Category'
 import LogoutIcon         from '@mui/icons-material/Logout'
 import { useAuthStore, useUser, useHousehold, useIsDemo } from '@/features/auth/authStore'
 import { api } from '@/shared/lib/api'
@@ -24,6 +25,7 @@ import { useAccountsStore }     from '@/shared/stores/accountsStore'
 import { useGoalsStore }        from '@/shared/stores/goalsStore'
 import { useBudgetStore }       from '@/shared/stores/budgetStore'
 import { usePatrimonyStore }    from '@/shared/stores/patrimonyStore'
+import { useCategoriesStore }   from '@/shared/stores/categoriesStore'
 import LoginPage            from '@/features/auth/LoginPage'
 import ResetPasswordPage    from '@/features/auth/ResetPasswordPage'
 import PrivacyPage          from '@/features/legal/PrivacyPage'
@@ -41,6 +43,7 @@ import AccountsPage         from '@/features/accounts/AccountsPage'
 import SubscriptionsPage    from '@/features/subscriptions/SubscriptionsPage'
 import FamilyPage           from '@/features/family/FamilyPage'
 import SettingsPage         from '@/features/settings/SettingsPage'
+import CategoriesPage       from '@/features/categories/CategoriesPage'
 import QuickLaunchSheet     from '@/shared/components/QuickLaunchSheet'
 import MobileBottomNav      from '@/shared/components/MobileBottomNav'
 import BrandMark            from '@/shared/components/BrandMark'
@@ -59,6 +62,7 @@ const NAV = [
   { label: 'Minhas contas',      icon: <CreditCardIcon />,      path: '/app/accounts' },
   { label: 'Assinaturas',        icon: <RadarIcon />,           path: '/app/subscriptions' },
   { label: 'Família',            icon: <GroupsIcon />,          path: '/app/family' },
+  { label: 'Categorias',         icon: <CategoryIcon />,        path: '/app/categories' },
   { label: 'Configurações',      icon: <SettingsIcon />,        path: '/app/settings' },
 ]
 
@@ -180,6 +184,7 @@ function AppShell() {
                 <Route path="/subscriptions" element={<SubscriptionsPage />} />
                 <Route path="/family"        element={<FamilyPage />} />
                 <Route path="/settings"      element={<SettingsPage />} />
+                <Route path="/categories"    element={<CategoriesPage />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
@@ -207,6 +212,7 @@ function StoreInitializer() {
   const initGoals        = useGoalsStore(s => s.init)
   const initBudget       = useBudgetStore(s => s.init)
   const initPatrimony    = usePatrimonyStore(s => s.init)
+  const initCategories   = useCategoriesStore(s => s.init)
 
   useEffect(() => {
     if (!user || isDemo) return
@@ -224,7 +230,7 @@ function StoreInitializer() {
       }
       await Promise.all([
         initAccounts(), initBills(), initTransactions(),
-        initGoals(), initBudget(), initPatrimony(),
+        initGoals(), initBudget(), initPatrimony(), initCategories(),
       ])
       // New user with no accounts → onboarding
       const currentAccounts = useAccountsStore.getState().accounts

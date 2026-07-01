@@ -16,6 +16,7 @@ import CreditCardIcon    from '@mui/icons-material/CreditCard'
 import RadarIcon         from '@mui/icons-material/Radar'
 import GroupsIcon        from '@mui/icons-material/Groups'
 import SettingsIcon      from '@mui/icons-material/Settings'
+import CategoryIcon      from '@mui/icons-material/Category'
 import LogoutIcon        from '@mui/icons-material/Logout'
 import ChevronRightIcon  from '@mui/icons-material/ChevronRight'
 import { KZ, KZ_GRADIENTS } from '@/theme'
@@ -45,6 +46,7 @@ const MORE_ITEMS = [
   { label: 'Minhas contas',    icon: <CreditCardIcon />,     path: '/app/accounts',      desc: 'Carteiras, bancos e cartões' },
   { label: 'Assinaturas',      icon: <RadarIcon />,          path: '/app/subscriptions', desc: 'Radar de cobranças recorrentes' },
   { label: 'Família',          icon: <GroupsIcon />,         path: '/app/family',        desc: 'Membros e visão compartilhada' },
+  { label: 'Categorias',       icon: <CategoryIcon />,       path: '/app/categories',    desc: 'Crie suas próprias categorias' },
   { label: 'Configurações',    icon: <SettingsIcon />,       path: '/app/settings',      desc: 'Perfil, senha e conta' },
 ]
 
