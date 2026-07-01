@@ -103,9 +103,14 @@ export const useBillsStore = create<BillsState>()(
           bills: s.bills.map(b => {
             if (b.id !== id) return b
             if (b.frequency !== 'once') {
+              const next = nextDueDate(b.dueDate, b.frequency)
+              // Se o próximo vencimento passar da data de quitação, esta foi a última parcela
+              if (b.endDate && next > b.endDate) {
+                return { ...b, status: 'paid', paidAt: today }
+              }
               // Conta recorrente: rola para o próximo vencimento e volta a "pendente"
               recurred = true
-              return { ...b, dueDate: nextDueDate(b.dueDate, b.frequency), status: 'pending', paidAt: today }
+              return { ...b, dueDate: next, status: 'pending', paidAt: today }
             }
             return { ...b, status: 'paid', paidAt: today }
           }),

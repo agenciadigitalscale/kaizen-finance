@@ -30,10 +30,10 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const b = await request.json() as Record<string, unknown>
     const nid = crypto.randomUUID()
     await env.DB.prepare(
-      `INSERT INTO bills (id, household_id, name, amount, due_date, frequency, category_id, account_id, status, is_shared, reminder_days, whatsapp_alert, whatsapp_number, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO bills (id, household_id, name, amount, due_date, end_date, frequency, category_id, account_id, status, is_shared, reminder_days, whatsapp_alert, whatsapp_number, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
-      nid, householdId, b.name, b.amount, b.dueDate, b.frequency ?? 'monthly',
+      nid, householdId, b.name, b.amount, b.dueDate, b.endDate ?? null, b.frequency ?? 'monthly',
       b.categoryId ?? null, b.accountId ?? null, 'pending',
       b.isShared ? 1 : 0, b.reminderDays ?? 3,
       b.whatsappAlert ? 1 : 0, b.whatsappNumber ?? null, b.notes ?? null
@@ -53,7 +53,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const b = await request.json() as Record<string, unknown>
     const sets: string[] = []; const vals: unknown[] = []
     const map: Record<string, string> = {
-      name: 'name', amount: 'amount', dueDate: 'due_date', frequency: 'frequency',
+      name: 'name', amount: 'amount', dueDate: 'due_date', endDate: 'end_date', frequency: 'frequency',
       categoryId: 'category_id', accountId: 'account_id', status: 'status',
       isShared: 'is_shared', reminderDays: 'reminder_days', paidAt: 'paid_at',
       whatsappAlert: 'whatsapp_alert', whatsappNumber: 'whatsapp_number', notes: 'notes',

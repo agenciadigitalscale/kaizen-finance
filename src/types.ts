@@ -122,6 +122,7 @@ export interface Bill {
   name: string
   amount: number            // centavos
   dueDate: string           // YYYY-MM-DD (próximo vencimento)
+  endDate?: string          // YYYY-MM-DD — data de quitação/fim (opcional)
   frequency: BillFrequency
   categoryId: string
   accountId?: string        // conta para débito

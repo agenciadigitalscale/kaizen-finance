@@ -29,6 +29,7 @@ export function mapBill(r: Row): Bill {
     name:           r.name,
     amount:         r.amount,
     dueDate:        r.due_date,
+    endDate:        (r.end_date as string) ?? undefined,
     frequency:      r.frequency,
     categoryId:     r.category_id ?? 'outros',
     accountId:      r.account_id ?? undefined,

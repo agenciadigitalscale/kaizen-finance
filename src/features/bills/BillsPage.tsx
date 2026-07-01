@@ -100,6 +100,11 @@ function BillCard({ bill, onPay, onEdit, onDelete }: {
             </Typography>
             <RepeatIcon sx={{ fontSize: 10, color: KZ.t3, ml: 0.5 }} />
             <Typography sx={{ fontSize: '0.62rem', color: KZ.t3 }}>{FREQ_LABELS[bill.frequency]}</Typography>
+            {bill.endDate && (
+              <Typography sx={{ fontSize: '0.62rem', color: KZ.gold, fontWeight: 600, ml: 0.5 }}>
+                🏁 quita {new Date(bill.endDate + 'T12:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+              </Typography>
+            )}
           </Box>
         </Box>
 
@@ -155,7 +160,7 @@ function BillDialog({ open, bill, onClose, onSave }: {
 
   function handleSave() {
     const amount = Math.round(parseFloat(amountStr.replace(',', '.')) * 100) || 0
-    onSave({ ...form, amount })
+    onSave({ ...form, amount, endDate: form.endDate || undefined })
     onClose()
   }
 
@@ -182,6 +187,13 @@ function BillDialog({ open, bill, onClose, onSave }: {
             {Object.entries(FREQ_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
           </Select>
         </FormControl>
+        {form.frequency !== 'once' && (
+          <TextField label="Data de quitação (opcional)" size="small" fullWidth type="date" value={form.endDate ?? ''}
+            onChange={e => up('endDate', e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            helperText="Quando termina de pagar (ex: financiamento até dez/2027)."
+          />
+        )}
         <FormControl size="small" fullWidth>
           <InputLabel>Categoria</InputLabel>
           <Select value={form.categoryId} label="Categoria" onChange={e => up('categoryId', e.target.value)}>
@@ -211,11 +223,94 @@ function BillDialog({ open, bill, onClose, onSave }: {
   )
 }
 
+// ── Calendário mensal ─────────────────────────────────────────────────────────
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+
+function BillsCalendar({ bills, onPay, onEdit, onDelete }: {
+  bills: Bill[]
+  onPay: (id: string) => void
+  onEdit: (b: Bill) => void
+  onDelete: (id: string) => void
+}) {
+  const [offset, setOffset]     = useState(0)
+  const [selected, setSelected] = useState<string | null>(null)
+  const base = useMemo(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset); return d }, [offset])
+  const year = base.getFullYear(), month = base.getMonth()
+  const monthKey  = `${year}-${pad2(month + 1)}`
+  const todayStr  = new Date().toISOString().slice(0, 10)
+  const firstDay  = new Date(year, month, 1).getDay()
+  const daysCount = new Date(year, month + 1, 0).getDate()
+
+  const dueByDate = useMemo(() => {
+    const m: Record<string, Bill[]> = {}
+    for (const b of bills) if (b.dueDate.slice(0, 7) === monthKey) (m[b.dueDate] ??= []).push(b)
+    return m
+  }, [bills, monthKey])
+  const endDates = useMemo(() => new Set(bills.filter(b => b.endDate?.slice(0, 7) === monthKey).map(b => b.endDate!)), [bills, monthKey])
+
+  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysCount }, (_, i) => i + 1)]
+  const selectedBills = selected ? (dueByDate[selected] ?? []) : []
+
+  return (
+    <Paper sx={{ p: 2 }}>
+      {/* Nav do mês */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <IconButton size="small" onClick={() => { setOffset(o => o - 1); setSelected(null) }} sx={{ color: KZ.t2 }}>‹</IconButton>
+        <Typography sx={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: '0.9rem', textTransform: 'capitalize' }}>{base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Typography>
+        <IconButton size="small" onClick={() => { setOffset(o => o + 1); setSelected(null) }} sx={{ color: KZ.t2 }}>›</IconButton>
+      </Box>
+      {/* Cabeçalho dias da semana */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', mb: 0.5 }}>
+        {WEEKDAYS.map((w, i) => <Typography key={i} sx={{ textAlign: 'center', fontSize: '0.6rem', color: KZ.t3, fontWeight: 700 }}>{w}</Typography>)}
+      </Box>
+      {/* Grade */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0.4 }}>
+        {cells.map((day, i) => {
+          if (day === null) return <Box key={i} />
+          const dateStr = `${monthKey}-${pad2(day)}`
+          const dayBills = dueByDate[dateStr] ?? []
+          const isToday = dateStr === todayStr
+          const hasEnd  = endDates.has(dateStr)
+          const unpaid  = dayBills.filter(b => b.status !== 'paid')
+          const overdue = unpaid.some(() => dateStr < todayStr)
+          const dot = overdue ? KZ.red : isToday ? '#F97316' : unpaid.length ? KZ.gold : dayBills.length ? KZ.green : null
+          const isSel = selected === dateStr
+          return (
+            <Box key={i} component={motion.div} whileTap={{ scale: 0.9 }} onClick={() => setSelected(isSel ? null : dateStr)}
+              sx={{ aspectRatio: '1', borderRadius: 1.5, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                bgcolor: isSel ? 'rgba(16,185,129,0.16)' : isToday ? 'rgba(249,115,22,0.08)' : 'transparent',
+                border: `1px solid ${isSel ? KZ.green : isToday ? 'rgba(249,115,22,0.3)' : 'transparent'}` }}>
+              <Typography sx={{ fontSize: '0.72rem', fontWeight: isToday ? 800 : 500, color: isToday ? '#F97316' : KZ.t1 }}>{day}</Typography>
+              <Box sx={{ display: 'flex', gap: 0.3, mt: 0.2, height: 5, alignItems: 'center' }}>
+                {dot && <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: dot }} />}
+                {hasEnd && <Typography sx={{ fontSize: '0.5rem' }}>🏁</Typography>}
+              </Box>
+            </Box>
+          )
+        })}
+      </Box>
+      {/* Contas do dia selecionado */}
+      {selected && (
+        <Box sx={{ mt: 2, pt: 1.5, borderTop: `1px solid ${KZ.border}` }}>
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: KZ.t2, mb: 1 }}>
+            {new Date(selected + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+          </Typography>
+          {selectedBills.length > 0
+            ? selectedBills.map(b => <BillCard key={b.id} bill={b} onPay={onPay} onEdit={onEdit} onDelete={onDelete} />)
+            : <Typography sx={{ fontSize: '0.75rem', color: KZ.t3 }}>Nenhuma conta neste dia.</Typography>}
+        </Box>
+      )}
+    </Paper>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function BillsPage() {
   const { bills, addBill, updateBill, deleteBill, payBill } = useBillsStore()
   const [dialog, setDialog]     = useState<{ open: boolean; bill: Partial<Bill> | null }>({ open: false, bill: null })
   const [tab, setTab]           = useState<TabKey>('month')
+  const [view, setView]         = useState<'list' | 'calendar'>('list')
   const monthStr = new Date().toISOString().slice(0, 7)
 
   const stats = useMemo(() => {
@@ -296,8 +391,24 @@ export default function BillsPage() {
         ))}
       </Box>
 
+      {/* Toggle Lista / Calendário */}
+      <Box sx={{ display: 'flex', gap: 0.8, mb: 2 }}>
+        {(['list', 'calendar'] as const).map(v => (
+          <Box key={v} component={motion.div} whileTap={{ scale: 0.95 }} onClick={() => setView(v)}
+            sx={{ px: 1.6, py: 0.7, borderRadius: 2, cursor: 'pointer', fontSize: '0.76rem', fontWeight: 700,
+              ...(view === v ? { bgcolor: 'rgba(16,185,129,0.16)', color: KZ.green, border: `1px solid ${KZ.green}` }
+                             : { bgcolor: 'rgba(255,255,255,0.04)', color: KZ.t2, border: `1px solid ${KZ.border}` }) }}>
+            {v === 'list' ? '☰ Lista' : '🗓️ Calendário'}
+          </Box>
+        ))}
+      </Box>
+
+      {view === 'calendar' && (
+        <BillsCalendar bills={bills} onPay={handlePay} onEdit={b => setDialog({ open: true, bill: b })} onDelete={handleDelete} />
+      )}
+
       {/* Abas */}
-      <Box sx={{
+      {view === 'list' && <Box sx={{
         display: 'flex', gap: 0.8, mb: 2, overflowX: 'auto', pb: 0.5,
         '&::-webkit-scrollbar': { display: 'none' },
       }}>
@@ -332,9 +443,10 @@ export default function BillsPage() {
             </Box>
           )
         })}
-      </Box>
+      </Box>}
 
       {/* Bills list */}
+      {view === 'list' && (
       <Paper sx={{ p: 1.5 }}>
         {stats.overdueCount > 0 && tab !== 'paid' && tab !== 'overdue' && (
           <Box
@@ -374,6 +486,7 @@ export default function BillsPage() {
           )}
         </AnimatePresence>
       </Paper>
+      )}
 
       <BillDialog
         open={dialog.open}

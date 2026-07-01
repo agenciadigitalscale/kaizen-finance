@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS bills (
   name             TEXT NOT NULL,
   amount           INTEGER NOT NULL,
   due_date         TEXT NOT NULL,
+  end_date         TEXT,
   frequency        TEXT NOT NULL DEFAULT 'monthly',
   category_id      TEXT,
   account_id       TEXT,
