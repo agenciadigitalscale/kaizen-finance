@@ -26,6 +26,8 @@ import { useGoalsStore }        from '@/shared/stores/goalsStore'
 import { useBudgetStore }       from '@/shared/stores/budgetStore'
 import { usePatrimonyStore }    from '@/shared/stores/patrimonyStore'
 import { useCategoriesStore }   from '@/shared/stores/categoriesStore'
+import { useAnnouncementsStore } from '@/shared/stores/announcementsStore'
+import NotificationBell        from '@/shared/components/NotificationBell'
 import LoginPage            from '@/features/auth/LoginPage'
 import ResetPasswordPage    from '@/features/auth/ResetPasswordPage'
 import PrivacyPage          from '@/features/legal/PrivacyPage'
@@ -96,14 +98,15 @@ function AppShell() {
         <Box sx={{ flexShrink: 0, display: 'flex' }}>
           <KaizenEmblem size={36} />
         </Box>
-        <Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontWeight: 900, fontSize: '0.9rem', letterSpacing: '-0.02em', background: KZ_GRADIENTS.green, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Kaizen
           </Typography>
-          <Typography sx={{ fontSize: '0.5rem', color: KZ.t3, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <Typography sx={{ fontSize: '0.5rem', color: KZ.t3, letterSpacing: '0.06em', textTransform: 'uppercase' }} noWrap>
             {household?.name ?? 'Finance'}
           </Typography>
         </Box>
+        <NotificationBell />
       </Box>
 
       {/* Nav items */}
@@ -153,6 +156,7 @@ function AppShell() {
         {/* Barra superior com a marca — só mobile */}
         {!isDesktop && (
           <Box sx={{
+            position: 'relative',
             height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderBottom: `1px solid ${KZ.border}`,
             background: 'rgba(6,10,14,0.92)', backdropFilter: 'blur(20px)',
@@ -160,6 +164,9 @@ function AppShell() {
           }}>
             <KaizenEmblem size={30} />
             <BrandMark size={20} />
+            <Box sx={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}>
+              <NotificationBell />
+            </Box>
           </Box>
         )}
         <Box sx={{ flex: 1, overflowY: 'auto' }}>
@@ -213,6 +220,7 @@ function StoreInitializer() {
   const initBudget       = useBudgetStore(s => s.init)
   const initPatrimony    = usePatrimonyStore(s => s.init)
   const initCategories   = useCategoriesStore(s => s.init)
+  const initAnnouncements = useAnnouncementsStore(s => s.init)
 
   useEffect(() => {
     if (!user || isDemo) return
@@ -230,7 +238,7 @@ function StoreInitializer() {
       }
       await Promise.all([
         initAccounts(), initBills(), initTransactions(),
-        initGoals(), initBudget(), initPatrimony(), initCategories(),
+        initGoals(), initBudget(), initPatrimony(), initCategories(), initAnnouncements(),
       ])
       // New user with no accounts → onboarding
       const currentAccounts = useAccountsStore.getState().accounts

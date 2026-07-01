@@ -125,6 +125,12 @@ export const api = {
     test: (phone: string, message?: string) => request('/api/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone, message }) }),
   },
 
+  announcements: {
+    list:   () => request('/api/announcements'),
+    markRead: () => request('/api/announcements/read', { method: 'POST' }),
+    create: (title: string, body: string) => request('/api/announcements', { method: 'POST', body: JSON.stringify({ title, body }) }),
+  },
+
   voice: {
     parse: (transcript: string) => request('/api/voice', { method: 'POST', body: JSON.stringify({ transcript }) }),
   },

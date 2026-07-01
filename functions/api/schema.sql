@@ -52,6 +52,19 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 CREATE INDEX IF NOT EXISTS idx_pwreset_token ON password_resets(token_hash);
 
+CREATE TABLE IF NOT EXISTS announcements (
+  id         TEXT PRIMARY KEY,
+  title      TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+CREATE TABLE IF NOT EXISTS announcement_reads (
+  announcement_id TEXT NOT NULL,
+  user_id         TEXT NOT NULL,
+  read_at         INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+  PRIMARY KEY (announcement_id, user_id)
+);
+
 -- ── Categorias ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (
   id           TEXT PRIMARY KEY,
