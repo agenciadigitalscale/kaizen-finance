@@ -46,6 +46,7 @@ import SubscriptionsPage    from '@/features/subscriptions/SubscriptionsPage'
 import FamilyPage           from '@/features/family/FamilyPage'
 import SettingsPage         from '@/features/settings/SettingsPage'
 import CategoriesPage       from '@/features/categories/CategoriesPage'
+import AdminClientsPage     from '@/features/admin/AdminClientsPage'
 import QuickLaunchSheet     from '@/shared/components/QuickLaunchSheet'
 import MobileBottomNav      from '@/shared/components/MobileBottomNav'
 import BrandMark            from '@/shared/components/BrandMark'
@@ -66,6 +67,7 @@ const NAV = [
   { label: 'Família',            icon: <GroupsIcon />,          path: '/app/family' },
   { label: 'Categorias',         icon: <CategoryIcon />,        path: '/app/categories' },
   { label: 'Configurações',      icon: <SettingsIcon />,        path: '/app/settings' },
+  { label: 'Clientes',           icon: <GroupsIcon />,          path: '/app/clientes', adminOnly: true },
 ]
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -82,10 +84,9 @@ function AppShell() {
   const user      = useUser()
   const household = useHousehold()
   const logout    = useAuthStore(s => s.logout)
+  const isAdmin   = useAnnouncementsStore(s => s.isAdmin)
 
-  const activeIdx = NAV.findIndex(n =>
-    n.path === '/app' ? location.pathname === '/app' : location.pathname.startsWith(n.path)
-  )
+  const visibleNav = NAV.filter(n => !n.adminOnly || isAdmin)
 
   const sidebar = (
     <Box sx={{
@@ -111,8 +112,8 @@ function AppShell() {
 
       {/* Nav items */}
       <Box sx={{ flex: 1, px: 1, py: 1.5, display: 'flex', flexDirection: 'column', gap: 0.2, overflowY: 'auto' }}>
-        {NAV.map((item, i) => {
-          const isActive = i === activeIdx
+        {visibleNav.map((item) => {
+          const isActive = item.path === '/app' ? location.pathname === '/app' : location.pathname.startsWith(item.path)
           return (
             <Box key={item.path} onClick={() => navigate(item.path)} sx={{
               display: 'flex', alignItems: 'center', gap: 1.2, px: 1.4, py: 0.9, borderRadius: 2, cursor: 'pointer', transition: 'all 0.15s',
@@ -192,6 +193,7 @@ function AppShell() {
                 <Route path="/family"        element={<FamilyPage />} />
                 <Route path="/settings"      element={<SettingsPage />} />
                 <Route path="/categories"    element={<CategoriesPage />} />
+                <Route path="/clientes"      element={<AdminClientsPage />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
@@ -246,6 +248,28 @@ function StoreInitializer() {
         navigate('/onboarding', { replace: true })
       }
     })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isDemo])
+
+  // ── Sincronização entre aparelhos: recarrega ao voltar o foco + a cada 60s ──
+  useEffect(() => {
+    if (!user || isDemo) return
+    const sync = () => {
+      if (document.visibilityState !== 'visible') return
+      if (!useAuthStore.getState().accessToken) return
+      void Promise.all([
+        initAccounts(), initBills(), initTransactions(),
+        initGoals(), initBudget(), initPatrimony(), initCategories(), initAnnouncements(),
+      ])
+    }
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+    const iv = window.setInterval(sync, 60_000)
+    return () => {
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+      clearInterval(iv)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isDemo])
 

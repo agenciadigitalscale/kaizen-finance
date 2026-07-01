@@ -25,6 +25,7 @@ import { api } from '@/shared/lib/api'
 import { useUiStore } from '@/shared/stores/uiStore'
 import { useAuthStore, useUser, useHousehold } from '@/features/auth/authStore'
 import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import { useAnnouncementsStore } from '@/shared/stores/announcementsStore'
 import { useVoiceCapture } from '@/shared/lib/useVoiceCapture'
 
 type ParsedTx = Pick<Transaction, 'type' | 'amount' | 'description' | 'categoryId' | 'date'>
@@ -48,6 +49,7 @@ const MORE_ITEMS = [
   { label: 'Família',          icon: <GroupsIcon />,         path: '/app/family',        desc: 'Membros e visão compartilhada' },
   { label: 'Categorias',       icon: <CategoryIcon />,       path: '/app/categories',    desc: 'Crie suas próprias categorias' },
   { label: 'Configurações',    icon: <SettingsIcon />,       path: '/app/settings',      desc: 'Perfil, senha e conta' },
+  { label: 'Clientes',         icon: <GroupsIcon />,         path: '/app/clientes',      desc: 'Controle de assinaturas', adminOnly: true },
 ]
 
 const isActive = (path: string, pathname: string) =>
@@ -90,6 +92,7 @@ export default function MobileBottomNav() {
   const [recording, setRecording] = useState(false)
   const [snack, setSnack] = useState<{ msg: string; txId?: string; error?: boolean } | null>(null)
 
+  const isAdmin    = useAnnouncementsStore(s => s.isAdmin)
   const moreActive = MORE_ITEMS.some(m => isActive(m.path, location.pathname))
 
   // Processa o texto reconhecido → IA → lança a transação
@@ -325,7 +328,7 @@ export default function MobileBottomNav() {
 
           {/* Itens */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {MORE_ITEMS.map(item => {
+            {MORE_ITEMS.filter(item => !(item as { adminOnly?: boolean }).adminOnly || isAdmin).map(item => {
               const active = isActive(item.path, location.pathname)
               return (
                 <Box

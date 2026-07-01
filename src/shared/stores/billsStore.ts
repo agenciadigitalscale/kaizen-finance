@@ -97,30 +97,24 @@ export const useBillsStore = create<BillsState>()(
       },
 
       payBill: (id) => {
+        const bill = useBillsStore.getState().bills.find(b => b.id === id)
+        if (!bill) return
         const today = new Date().toISOString().slice(0, 10)
-        let recurred = false
-        set(s => ({
-          bills: s.bills.map(b => {
-            if (b.id !== id) return b
-            if (b.frequency !== 'once') {
-              const next = nextDueDate(b.dueDate, b.frequency)
-              // Se o próximo vencimento passar da data de quitação, esta foi a última parcela
-              if (b.endDate && next > b.endDate) {
-                return { ...b, status: 'paid', paidAt: today }
-              }
-              // Conta recorrente: rola para o próximo vencimento e volta a "pendente"
-              recurred = true
-              return { ...b, dueDate: next, status: 'pending', paidAt: today }
-            }
-            return { ...b, status: 'paid', paidAt: today }
-          }),
-        }))
-        if (!getIsDemo()) {
-          if (recurred) {
-            const bill = useBillsStore.getState().bills.find(b => b.id === id)
-            if (bill) api.bills.update(id, { dueDate: bill.dueDate, status: 'pending', paidAt: today }).catch(console.error)
-          } else {
-            api.bills.pay(id).catch(console.error)
+
+        // 1. Marca a conta atual como PAGA → vai para a aba "Pagas" (Kanban)
+        set(s => ({ bills: s.bills.map(b => b.id === id ? { ...b, status: 'paid', paidAt: today } : b) }))
+        if (!getIsDemo()) api.bills.pay(id).catch(console.error)
+
+        // 2. Se recorrente (e dentro da data de quitação), cria a PRÓXIMA ocorrência pendente
+        if (bill.frequency !== 'once') {
+          const next = nextDueDate(bill.dueDate, bill.frequency)
+          if (!bill.endDate || next <= bill.endDate) {
+            useBillsStore.getState().addBill({
+              name: bill.name, amount: bill.amount, dueDate: next, endDate: bill.endDate,
+              frequency: bill.frequency, categoryId: bill.categoryId, accountId: bill.accountId,
+              status: 'pending', isShared: bill.isShared, reminderDays: bill.reminderDays,
+              whatsappAlert: bill.whatsappAlert, whatsappNumber: bill.whatsappNumber, notes: bill.notes,
+            })
           }
         }
       },

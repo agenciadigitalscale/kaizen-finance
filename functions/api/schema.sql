@@ -16,10 +16,13 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- ── Famílias / Casas ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS households (
-  id         TEXT PRIMARY KEY,
-  name       TEXT NOT NULL,
-  currency   TEXT NOT NULL DEFAULT 'BRL',
-  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+  id             TEXT PRIMARY KEY,
+  name           TEXT NOT NULL,
+  currency       TEXT NOT NULL DEFAULT 'BRL',
+  plan           TEXT NOT NULL DEFAULT 'trial',
+  sub_paid_until INTEGER,
+  sub_method     TEXT,
+  created_at     INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
 
 CREATE TABLE IF NOT EXISTS household_members (

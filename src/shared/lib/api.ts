@@ -7,6 +7,13 @@ const isNative = typeof window !== 'undefined' &&
    (window.location.hostname === 'localhost' && window.location.port === ''))
 export const API_BASE = isNative ? 'https://kaizen-43x.pages.dev' : ''
 
+// Parse tolerante — evita "Unexpected end of JSON input" quando o corpo vem vazio ou não-JSON
+async function safeJson(res: Response): Promise<unknown> {
+  const text = await res.text().catch(() => '')
+  if (!text) return { ok: false, error: 'Resposta vazia do servidor' }
+  try { return JSON.parse(text) } catch { return { ok: false, error: 'Resposta inválida do servidor' } }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function request<T = any>(url: string, options?: RequestInit): Promise<T> {
   const token = useAuthStore.getState().accessToken
@@ -23,7 +30,7 @@ async function request<T = any>(url: string, options?: RequestInit): Promise<T> 
 
   if (res.status === 401) {
     const refresh = await fetch(API_BASE + '/api/auth/refresh', { method: 'POST', credentials: 'include' })
-    const rd = await refresh.json() as { ok: boolean; data?: { accessToken: string } }
+    const rd = await safeJson(refresh) as { ok: boolean; data?: { accessToken: string } }
     if (rd.ok && rd.data?.accessToken) {
       useAuthStore.getState().setToken(rd.data.accessToken)
       const retry = await fetch(API_BASE + url, {
@@ -35,13 +42,13 @@ async function request<T = any>(url: string, options?: RequestInit): Promise<T> 
         },
         credentials: 'include',
       })
-      return retry.json() as Promise<T>
+      return await safeJson(retry) as T
     }
     useAuthStore.getState().logout()
     throw new Error('UNAUTHORIZED')
   }
 
-  return res.json() as Promise<T>
+  return await safeJson(res) as T
 }
 
 export const api = {
@@ -129,6 +136,12 @@ export const api = {
     list:   () => request('/api/announcements'),
     markRead: () => request('/api/announcements/read', { method: 'POST' }),
     create: (title: string, body: string) => request('/api/announcements', { method: 'POST', body: JSON.stringify({ title, body }) }),
+  },
+
+  admin: {
+    clients: () => request('/api/admin/clients'),
+    markPaid: (householdId: string, method: string, months = 1) => request('/api/admin/clients/pay', { method: 'POST', body: JSON.stringify({ householdId, method, months }) }),
+    unpay: (householdId: string) => request('/api/admin/clients/unpay', { method: 'POST', body: JSON.stringify({ householdId }) }),
   },
 
   voice: {
