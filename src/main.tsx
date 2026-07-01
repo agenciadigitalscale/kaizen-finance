@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.tsx'
 import theme from './theme.ts'
+import ErrorBoundary from '@/shared/components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,7 +24,9 @@ createRoot(document.getElementById('root')!).render(
         {/* reducedMotion="user" — framer-motion respeita "reduzir movimento" do sistema */}
         <MotionConfig reducedMotion="user">
           <QueryClientProvider client={queryClient}>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </QueryClientProvider>
         </MotionConfig>
       </ThemeProvider>

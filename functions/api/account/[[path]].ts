@@ -69,5 +69,40 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true })
   }
 
+  // ── POST /api/account/delete — excluir conta e todos os dados (LGPD) ──
+  if (last === 'delete' && request.method === 'POST') {
+    const { password } = body
+    if (!password) return json({ ok: false, error: 'Confirme com sua senha' }, 400)
+
+    const user = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?')
+      .bind(userId).first<{ password_hash: string }>()
+    if (!user) return json({ ok: false, error: 'Usuário não encontrado' }, 404)
+    if (!(await verifyPassword(password, user.password_hash)))
+      return json({ ok: false, error: 'Senha incorreta' }, 401)
+
+    // Apaga tudo da família + o usuário (batch atômico)
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM transactions WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM bills WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM budgets WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM goals WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM assets WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM liabilities WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM accounts WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM categories WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM household_members WHERE household_id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM password_resets WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM households WHERE id = ?').bind(householdId),
+      env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId),
+    ])
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': 'kz_refresh=; HttpOnly; Secure; SameSite=Lax; Path=/api/auth; Max-Age=0',
+      },
+    })
+  }
+
   return json({ ok: false, error: 'Rota não encontrada' }, 404)
 }

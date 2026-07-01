@@ -1,13 +1,19 @@
 import { useState } from 'react'
-import { Box, Typography, Paper, TextField, Button, Alert } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
+import { Box, Typography, Paper, TextField, Button, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import { motion } from 'framer-motion'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PersonIcon   from '@mui/icons-material/Person'
 import LockIcon     from '@mui/icons-material/Lock'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
+import DownloadIcon from '@mui/icons-material/Download'
 import { KZ, KZ_GRADIENTS } from '@/theme'
+import { formatBRL } from '@/types'
 import { useUser, useHousehold, useIsDemo, useAuthStore } from '@/features/auth/authStore'
 import { api } from '@/shared/lib/api'
+import { downloadCsv } from '@/shared/lib/exportCsv'
+import { useTransactionsStore } from '@/shared/stores/transactionsStore'
+import { useBillsStore } from '@/shared/stores/billsStore'
 
 function Feedback({ msg }: { msg: { type: 'success' | 'error'; text: string } | null }) {
   if (!msg) return null
@@ -21,10 +27,30 @@ function Feedback({ msg }: { msg: { type: 'success' | 'error'; text: string } | 
 }
 
 export default function SettingsPage() {
+  const navigate    = useNavigate()
   const user        = useUser()
   const household   = useHousehold()
   const isDemo      = useIsDemo()
   const patchProfile = useAuthStore(s => s.patchProfile)
+  const logout       = useAuthStore(s => s.logout)
+
+  const [delOpen, setDelOpen]     = useState(false)
+  const [delPw, setDelPw]         = useState('')
+  const [delErr, setDelErr]       = useState('')
+  const [delLoading, setDelLoad]  = useState(false)
+
+  async function deleteAccount() {
+    setDelErr('')
+    if (isDemo) { setDelErr('Indisponível no modo demo.'); return }
+    if (!delPw) { setDelErr('Digite sua senha para confirmar.'); return }
+    setDelLoad(true)
+    try {
+      const res = await api.account.deleteAccount(delPw) as { ok: boolean; error?: string }
+      if (res.ok) { logout(); navigate('/', { replace: true }) }
+      else setDelErr(res.error ?? 'Erro ao excluir.')
+    } catch { setDelErr('Erro de conexão.') }
+    finally { setDelLoad(false) }
+  }
 
   const [name, setName]               = useState(user?.name ?? '')
   const [householdName, setHName]     = useState(household?.name ?? '')
@@ -52,6 +78,26 @@ export default function SettingsPage() {
       else setWaMsg({ type: 'error', text: res.error ?? 'Falha ao enviar.' })
     } catch { setWaMsg({ type: 'error', text: 'Erro de conexão.' }) }
     finally { setWaL(false) }
+  }
+
+  const transactions = useTransactionsStore(s => s.transactions)
+  const bills        = useBillsStore(s => s.bills)
+
+  function exportTransactions() {
+    const rows: (string | number)[][] = [['Data', 'Tipo', 'Descrição', 'Categoria', 'Valor (R$)', 'Status']]
+    for (const t of [...transactions].sort((a, b) => a.date.localeCompare(b.date))) {
+      const tipo = t.type === 'income' ? 'Receita' : t.type === 'transfer' ? 'Transferência' : 'Despesa'
+      rows.push([t.date, tipo, t.description, t.categoryId, formatBRL(t.amount).replace('R$', '').trim(), t.status])
+    }
+    downloadCsv(`kaizen-lancamentos-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+  }
+
+  function exportBills() {
+    const rows: (string | number)[][] = [['Nome', 'Valor (R$)', 'Vencimento', 'Frequência', 'Categoria', 'Status']]
+    for (const b of [...bills].sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
+      rows.push([b.name, formatBRL(b.amount).replace('R$', '').trim(), b.dueDate, b.frequency, b.categoryId, b.status])
+    }
+    downloadCsv(`kaizen-contas-${new Date().toISOString().slice(0, 10)}.csv`, rows)
   }
 
   async function saveProfile() {
@@ -157,6 +203,65 @@ export default function SettingsPage() {
           Requer integração Z-API configurada no servidor. O envio automático antes do vencimento é ativado no lançamento.
         </Typography>
       </Paper>
+
+      {/* Seus dados */}
+      <Paper sx={{ p: 2.5, mt: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <DownloadIcon sx={{ fontSize: 18, color: KZ.t2 }} />
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 700 }}>Seus dados</Typography>
+        </Box>
+        <Typography sx={{ fontSize: '0.74rem', color: KZ.t2, mb: 2, lineHeight: 1.5 }}>
+          Seus dados são seus. Baixe tudo em CSV (abre no Excel) quando quiser.
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="outlined" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={exportTransactions}
+            sx={{ borderColor: KZ.border, color: KZ.t1, borderRadius: 2, fontSize: '0.78rem', '&:hover': { borderColor: KZ.green } }}>
+            Lançamentos (CSV)
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadIcon sx={{ fontSize: 16 }} />} onClick={exportBills}
+            sx={{ borderColor: KZ.border, color: KZ.t1, borderRadius: 2, fontSize: '0.78rem', '&:hover': { borderColor: KZ.green } }}>
+            Contas a pagar (CSV)
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Privacidade + Zona de perigo */}
+      <Paper sx={{ p: 2.5, mt: 2, border: `1px solid rgba(239,68,68,0.2)` }}>
+        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, mb: 1 }}>Privacidade e conta</Typography>
+        <Typography component="span" onClick={() => navigate('/privacidade')}
+          sx={{ fontSize: '0.76rem', color: KZ.green, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>
+          Ler a Política de Privacidade
+        </Typography>
+        <Box sx={{ mt: 2.5, pt: 2, borderTop: `1px solid ${KZ.border}` }}>
+          <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: KZ.red }}>Excluir minha conta</Typography>
+          <Typography sx={{ fontSize: '0.7rem', color: KZ.t3, mt: 0.5, mb: 1.5 }}>
+            Apaga permanentemente sua conta e todos os dados (contas, lançamentos, metas). Não dá pra desfazer.
+          </Typography>
+          <Button variant="outlined" onClick={() => { setDelOpen(true); setDelErr(''); setDelPw('') }}
+            sx={{ borderColor: 'rgba(239,68,68,0.4)', color: KZ.red, borderRadius: 2, fontSize: '0.76rem', '&:hover': { borderColor: KZ.red, bgcolor: 'rgba(239,68,68,0.06)' } }}>
+            Excluir conta e dados
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={delOpen} onClose={() => setDelOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem', color: KZ.red }}>Excluir conta permanentemente?</DialogTitle>
+        <DialogContent sx={{ pt: '8px !important' }}>
+          <Typography sx={{ fontSize: '0.8rem', color: KZ.t2, mb: 2, lineHeight: 1.5 }}>
+            Isso apaga <strong>todos</strong> os seus dados e não pode ser desfeito. Digite sua senha para confirmar.
+          </Typography>
+          <TextField label="Sua senha" type="password" size="small" fullWidth autoFocus value={delPw}
+            onChange={e => setDelPw(e.target.value)} onKeyDown={e => e.key === 'Enter' && deleteAccount()} />
+          {delErr && <Alert severity="error" sx={{ mt: 1.5, py: 0.5, fontSize: '0.76rem' }}>{delErr}</Alert>}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setDelOpen(false)} sx={{ color: KZ.t2 }}>Cancelar</Button>
+          <Button variant="contained" color="error" disabled={delLoading} onClick={deleteAccount} sx={{ borderRadius: 2, fontWeight: 700 }}>
+            {delLoading ? 'Excluindo…' : 'Excluir tudo'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
