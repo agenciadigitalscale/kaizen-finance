@@ -66,5 +66,30 @@ export const onRequest: PagesFunction<AdminEnv> = async (ctx) => {
     return json({ ok: true })
   }
 
+  // POST /api/admin/clients/delete — excluir um cliente (household + usuários + dados)
+  if (last === 'delete' && request.method === 'POST') {
+    const b = await request.json().catch(() => ({})) as { householdId?: string }
+    if (!b.householdId) return json({ ok: false, error: 'householdId obrigatório' }, 400)
+    const h = b.householdId
+    const sub = 'SELECT user_id FROM household_members WHERE household_id = ?'
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM transactions WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM bills WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM budgets WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM goals WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM assets WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM liabilities WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM accounts WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM categories WHERE household_id = ?').bind(h),
+      env.DB.prepare(`DELETE FROM refresh_tokens WHERE user_id IN (${sub})`).bind(h),
+      env.DB.prepare(`DELETE FROM password_resets WHERE user_id IN (${sub})`).bind(h),
+      env.DB.prepare(`DELETE FROM announcement_reads WHERE user_id IN (${sub})`).bind(h),
+      env.DB.prepare(`DELETE FROM users WHERE id IN (${sub})`).bind(h),
+      env.DB.prepare('DELETE FROM household_members WHERE household_id = ?').bind(h),
+      env.DB.prepare('DELETE FROM households WHERE id = ?').bind(h),
+    ])
+    return json({ ok: true })
+  }
+
   return json({ ok: false, error: 'Rota não encontrada' }, 404)
 }

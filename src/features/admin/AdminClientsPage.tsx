@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import GroupsIcon    from '@mui/icons-material/Groups'
 import RefreshIcon   from '@mui/icons-material/Refresh'
 import PaidIcon      from '@mui/icons-material/Paid'
+import DeleteIcon    from '@mui/icons-material/Delete'
 import { KZ, KZ_GRADIENTS } from '@/theme'
 import { api } from '@/shared/lib/api'
 
@@ -59,6 +60,11 @@ export default function AdminClientsPage() {
   }
   async function unpay(hid: string) {
     await api.admin.unpay(hid).catch(() => {})
+    void load()
+  }
+  async function removeClient(c: Client) {
+    if (!window.confirm(`Excluir ${c.name} (${c.email}) e TODOS os dados dele? Não dá pra desfazer.`)) return
+    await api.admin.remove(c.household_id).catch(() => {})
     void load()
   }
 
@@ -138,6 +144,9 @@ export default function AdminClientsPage() {
                     )}
                   </Box>
                 )}
+                <IconButton size="small" onClick={() => removeClient(c)} sx={{ color: KZ.t3, '&:hover': { color: KZ.red } }} title="Excluir cliente">
+                  <DeleteIcon sx={{ fontSize: 18 }} />
+                </IconButton>
               </Paper>
             )
           })}

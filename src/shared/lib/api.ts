@@ -142,6 +142,7 @@ export const api = {
     clients: () => request('/api/admin/clients'),
     markPaid: (householdId: string, method: string, months = 1) => request('/api/admin/clients/pay', { method: 'POST', body: JSON.stringify({ householdId, method, months }) }),
     unpay: (householdId: string) => request('/api/admin/clients/unpay', { method: 'POST', body: JSON.stringify({ householdId }) }),
+    remove: (householdId: string) => request('/api/admin/clients/delete', { method: 'POST', body: JSON.stringify({ householdId }) }),
   },
 
   voice: {

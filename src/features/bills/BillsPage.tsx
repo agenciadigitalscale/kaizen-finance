@@ -122,8 +122,9 @@ function BillCard({ bill, onPay, onEdit, onDelete }: {
         <Box sx={{ display: 'flex', gap: 0.3, flexShrink: 0 }}>
           {!isPaid && (
             <Tooltip title="Marcar como pago">
-              <IconButton size="small" onClick={() => onPay(bill.id)} sx={{ color: KZ.green, '&:hover': { bgcolor: 'rgba(16,185,129,0.1)' } }}>
-                <CheckCircleIcon sx={{ fontSize: 16 }} />
+              <IconButton size="small" onClick={() => onPay(bill.id)}
+                sx={{ color: KZ.t3, '&:hover': { color: KZ.green, bgcolor: 'rgba(16,185,129,0.12)' } }}>
+                <CheckCircleIcon sx={{ fontSize: 17 }} />
               </IconButton>
             </Tooltip>
           )}

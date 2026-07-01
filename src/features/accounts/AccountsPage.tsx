@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Button, Chip, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel,
-  Tooltip, Divider,
+  Tooltip, Divider, Menu,
 } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import AddIcon          from '@mui/icons-material/Add'
@@ -28,11 +28,13 @@ const BANKS = [
 ]
 
 // ── Account Card ──────────────────────────────────────────────────────────────
-function AccountCard({ account, onEdit, onDelete }: {
+function AccountCard({ account, onEdit, onDelete, onGuardar }: {
   account: Account; onEdit: (a: Account) => void; onDelete: (id: string) => void
+  onGuardar: (a: Account, e: HTMLElement) => void
 }) {
   const isCredit = account.type === 'credit_card'
   const isInvest = account.type === 'investment'
+  const isSavings = account.type === 'savings' || account.type === 'cash' || account.type === 'wallet'
   const balance  = account.balance
   const isNeg    = balance < 0
   const used     = isCredit && account.creditLimit ? Math.abs(balance) / account.creditLimit * 100 : 0
@@ -86,6 +88,17 @@ function AccountCard({ account, onEdit, onDelete }: {
           <Typography sx={{ fontSize: '0.62rem', color: KZ.t3, mt: 0.4 }}>
             {isNeg ? 'fatura aberta' : isCredit ? 'disponível' : 'saldo disponível'}
           </Typography>
+
+          {/* Guardar dinheiro (cofrinho) — acumula na conta */}
+          {isSavings && (
+            <Button size="small" fullWidth startIcon={<span>🐷</span>}
+              onClick={e => onGuardar(account, e.currentTarget)}
+              sx={{ mt: 1.5, borderRadius: 2, fontWeight: 700, fontSize: '0.76rem', color: KZ.green,
+                bgcolor: 'rgba(16,185,129,0.08)', border: `1px solid ${account.color}30`,
+                '&:hover': { bgcolor: 'rgba(16,185,129,0.14)' } }}>
+              Guardar dinheiro
+            </Button>
+          )}
 
           {/* Credit card usage bar */}
           {isCredit && account.creditLimit && (
@@ -216,6 +229,16 @@ function AccountDialog({ open, account, onClose, onSave }: {
 export default function AccountsPage() {
   const { accounts, addAccount, updateAccount, deleteAccount } = useAccountsStore()
   const [dialog, setDialog] = useState<{ open: boolean; account: Partial<Account> | null }>({ open: false, account: null })
+  const [guardarMenu, setGuardarMenu] = useState<{ el: HTMLElement; account: Account } | null>(null)
+  const [customOpen, setCustomOpen]   = useState(false)
+  const [customVal, setCustomVal]     = useState('')
+
+  function guardar(amountCents: number) {
+    const acc = guardarMenu?.account
+    if (!acc || amountCents <= 0) return
+    updateAccount(acc.id, { balance: acc.balance + amountCents })
+    setGuardarMenu(null); setCustomOpen(false); setCustomVal('')
+  }
 
   const totals = useMemo(() => {
     const liquid   = accounts.filter(a => ['checking','savings','cash','wallet'].includes(a.type))
@@ -319,6 +342,7 @@ export default function AccountsPage() {
                         account={account}
                         onEdit={a => setDialog({ open: true, account: a })}
                         onDelete={deleteAccount}
+                        onGuardar={(a, el) => setGuardarMenu({ el, account: a })}
                       />
                     </motion.div>
                   ))}
@@ -334,6 +358,34 @@ export default function AccountsPage() {
         onClose={() => setDialog({ open: false, account: null })}
         onSave={handleSave}
       />
+
+      {/* Menu Guardar dinheiro — valores rápidos */}
+      <Menu anchorEl={guardarMenu?.el} open={!!guardarMenu} onClose={() => setGuardarMenu(null)}>
+        <Typography sx={{ px: 2, py: 0.5, fontSize: '0.62rem', color: KZ.t3, textTransform: 'uppercase' }}>
+          Guardar em {guardarMenu?.account.name}
+        </Typography>
+        {[5000, 10000, 20000, 50000, 100000].map(v => (
+          <MenuItem key={v} onClick={() => guardar(v)} sx={{ fontSize: '0.9rem', fontWeight: 700, color: KZ.green }}>
+            + {formatBRL(v)}
+          </MenuItem>
+        ))}
+        <MenuItem onClick={() => { setCustomOpen(true) }} sx={{ fontSize: '0.85rem', color: KZ.t2 }}>Outro valor…</MenuItem>
+      </Menu>
+
+      {/* Valor custom */}
+      <Dialog open={customOpen} onClose={() => setCustomOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1rem' }}>🐷 Quanto guardar?</DialogTitle>
+        <DialogContent sx={{ pt: '8px !important' }}>
+          <TextField label="Valor (R$)" size="small" fullWidth autoFocus value={customVal}
+            onChange={e => setCustomVal(e.target.value)} placeholder="0,00"
+            onKeyDown={e => e.key === 'Enter' && guardar(Math.round(parseFloat(customVal.replace(',', '.')) * 100) || 0)} />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setCustomOpen(false)} sx={{ color: KZ.t2 }}>Cancelar</Button>
+          <Button variant="contained" onClick={() => guardar(Math.round(parseFloat(customVal.replace(',', '.')) * 100) || 0)}
+            sx={{ background: KZ_GRADIENTS.green }}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
