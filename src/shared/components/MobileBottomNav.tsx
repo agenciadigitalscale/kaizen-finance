@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Box, Typography, Drawer, Avatar, Snackbar, Button } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
 import MicIcon           from '@mui/icons-material/Mic'
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import HomeIcon          from '@mui/icons-material/Home'
 import ReceiptLongIcon   from '@mui/icons-material/ReceiptLong'
 import EmojiEventsIcon   from '@mui/icons-material/EmojiEvents'
@@ -40,6 +41,7 @@ const PRIMARY_RIGHT = [
 ]
 
 const MORE_ITEMS = [
+  { label: 'Calendário',       icon: <CalendarTodayIcon />,  path: '/app/calendario',    desc: 'Contas no dia do vencimento' },
   { label: 'Orçamento',        icon: <DonutLargeIcon />,     path: '/app/budget',        desc: 'Controle de gastos do mês' },
   { label: 'Patrimônio',       icon: <AccountBalanceIcon />, path: '/app/patrimony',     desc: 'O que você tem e o que deve' },
   { label: 'Relatórios',       icon: <BarChartIcon />,       path: '/app/reports',       desc: 'Resumo e análise do mês' },

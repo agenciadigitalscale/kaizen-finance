@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect } from 'react'
 import DashboardIcon      from '@mui/icons-material/Dashboard'
 import ReceiptIcon        from '@mui/icons-material/Receipt'
+import CalendarTodayIcon  from '@mui/icons-material/CalendarToday'
 import SyncAltIcon        from '@mui/icons-material/SyncAlt'
 import DonutLargeIcon     from '@mui/icons-material/DonutLarge'
 import EmojiEventsIcon    from '@mui/icons-material/EmojiEvents'
@@ -35,6 +36,7 @@ import LandingPage          from '@/features/landing/LandingPage'
 import OnboardingWizard     from '@/features/onboarding/OnboardingWizard'
 import DashboardPage        from '@/features/dashboard/DashboardPage'
 import BillsPage            from '@/features/bills/BillsPage'
+import CalendarPage         from '@/features/calendar/CalendarPage'
 import TransactionsPage     from '@/features/transactions/TransactionsPage'
 import BudgetPage           from '@/features/budget/BudgetPage'
 import GoalsPage            from '@/features/goals/GoalsPage'
@@ -56,6 +58,7 @@ import { KZ, KZ_GRADIENTS } from '@/theme'
 const NAV = [
   { label: 'Início',             icon: <DashboardIcon />,      path: '/app' },
   { label: 'Contas a pagar',     icon: <ReceiptIcon />,         path: '/app/bills' },
+  { label: 'Calendário',         icon: <CalendarTodayIcon />,   path: '/app/calendario' },
   { label: 'Entradas e saídas',  icon: <SyncAltIcon />,         path: '/app/transactions' },
   { label: 'Orçamento',          icon: <DonutLargeIcon />,      path: '/app/budget' },
   { label: 'Metas',              icon: <EmojiEventsIcon />,     path: '/app/goals' },
@@ -182,6 +185,7 @@ function AppShell() {
               <Routes>
                 <Route path="/"              element={<DashboardPage />} />
                 <Route path="/bills"         element={<BillsPage />} />
+                <Route path="/calendario"    element={<CalendarPage />} />
                 <Route path="/transactions"  element={<TransactionsPage />} />
                 <Route path="/budget"        element={<BudgetPage />} />
                 <Route path="/goals"         element={<GoalsPage />} />

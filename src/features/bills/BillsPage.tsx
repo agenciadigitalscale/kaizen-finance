@@ -145,13 +145,13 @@ function BillCard({ bill, onPay, onEdit, onDelete }: {
 }
 
 // ── Add/Edit Dialog ───────────────────────────────────────────────────────────
-const EMPTY_BILL: Partial<Bill> = {
+export const EMPTY_BILL: Partial<Bill> = {
   name: '', amount: 0, dueDate: new Date().toISOString().slice(0, 10),
   frequency: 'monthly', categoryId: 'outros', isShared: false,
   reminderDays: 3, whatsappAlert: false, status: 'pending',
 }
 
-function BillDialog({ open, bill, onClose, onSave }: {
+export function BillDialog({ open, bill, onClose, onSave }: {
   open: boolean; bill: Partial<Bill> | null; onClose: () => void; onSave: (b: Partial<Bill>) => void
 }) {
   const [form, setForm] = useState<Partial<Bill>>(bill ?? EMPTY_BILL)
@@ -228,7 +228,7 @@ function BillDialog({ open, bill, onClose, onSave }: {
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
-function BillsCalendar({ bills, onPay, onEdit, onDelete }: {
+export function BillsCalendar({ bills, onPay, onEdit, onDelete }: {
   bills: Bill[]
   onPay: (id: string) => void
   onEdit: (b: Bill) => void
