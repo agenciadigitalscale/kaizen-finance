@@ -15,5 +15,9 @@ binding      = "DB"
 database_name = "kaizen-db"
 database_id  = "d2064496-c7f2-499b-b661-a5d761fc667e"
 
+# ── Workers AI (transcrição de áudio do WhatsApp via Whisper) ─────────────────
+[ai]
+binding = "AI"
+
 # ── JWT Secret (KV ou variável de ambiente) ───────────────────────────────────
 # Adicionar via: wrangler secret put JWT_SECRET

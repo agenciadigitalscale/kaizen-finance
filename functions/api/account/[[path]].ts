@@ -49,6 +49,22 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     return json({ ok: true, data: { name, householdName: householdName || undefined } })
   }
 
+  // ── POST /api/account/whatsapp — vincular número do WhatsApp (robô) ──
+  if (last === 'whatsapp' && request.method === 'POST') {
+    const raw = (body.phone ?? '').replace(/\D/g, '')
+    if (raw && (raw.length < 10 || raw.length > 13))
+      return json({ ok: false, error: 'Número inválido — use DDD + número' }, 400)
+    const phone = raw ? (raw.startsWith('55') ? raw : `55${raw}`) : null
+    if (phone) {
+      // Um número só pode estar vinculado a uma conta
+      const taken = await env.DB.prepare('SELECT id FROM users WHERE whatsapp_phone = ? AND id != ?')
+        .bind(phone, userId).first()
+      if (taken) return json({ ok: false, error: 'Este número já está vinculado a outra conta' }, 409)
+    }
+    await env.DB.prepare('UPDATE users SET whatsapp_phone = ? WHERE id = ?').bind(phone, userId).run()
+    return json({ ok: true, data: { phone } })
+  }
+
   // ── POST /api/account/password — trocar senha ──
   if (last === 'password' && request.method === 'POST') {
     const { currentPassword, newPassword } = body

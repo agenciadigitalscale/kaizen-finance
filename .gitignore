@@ -23,3 +23,4 @@ dist-ssr
 *.sln
 *.sw?
 apk-download/
+.zapi-webhook-token.txt

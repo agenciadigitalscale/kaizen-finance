@@ -18,7 +18,7 @@ interface JwtPayload {
   exp: number
 }
 
-const PUBLIC = ['/api/auth/']
+const PUBLIC = ['/api/auth/', '/api/whatsapp/webhook']
 
 async function verifyJWT(token: string, secret: string): Promise<JwtPayload | null> {
   try {

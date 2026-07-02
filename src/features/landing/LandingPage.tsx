@@ -100,7 +100,7 @@ function Hero({ onCTA }: { onCTA: () => void }) {
 
       <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2, md: 6 }, textAlign: 'center', position: 'relative' }}>
         <FadeUp>
-          <Chip label="🚀  Novo · Gestão financeira familiar premium" size="small"
+          <Chip label="💚  Seu copiloto financeiro com IA — lance gastos por voz" size="small"
             sx={{ mb: 3, bgcolor: 'rgba(16,185,129,0.08)', color: KZ.green, border: `1px solid rgba(16,185,129,0.2)`, fontWeight: 600, fontSize: '0.72rem' }} />
         </FadeUp>
 
@@ -110,18 +110,18 @@ function Hero({ onCTA }: { onCTA: () => void }) {
             fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.05,
             color: KZ.t1,
           }}>
-            Saiba exatamente{' '}
+            Chega de terminar o mês{' '}
             <Box component="span" sx={{ background: KZ_GRADIENTS.green, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              onde vai cada real
+              sem saber pra onde foi o dinheiro
             </Box>
-            {' '}da sua família
           </Typography>
         </FadeUp>
 
         <FadeUp delay={0.16}>
-          <Typography sx={{ fontSize: { xs: '1rem', md: '1.2rem' }, color: KZ.t2, mt: 2.5, mb: 4, maxWidth: 580, mx: 'auto', lineHeight: 1.7 }}>
-            O único app que avisa <strong style={{ color: KZ.t1 }}>antes</strong> de você ficar no vermelho.
-            Contas a pagar, metas, previsão de caixa e IA financeira — tudo em um só lugar.
+          <Typography sx={{ fontSize: { xs: '1rem', md: '1.2rem' }, color: KZ.t2, mt: 2.5, mb: 4, maxWidth: 620, mx: 'auto', lineHeight: 1.7 }}>
+            O Kaizen avisa <strong style={{ color: KZ.t1 }}>antes</strong> de você ficar no vermelho, encontra
+            assinaturas que você paga sem usar e organiza tudo — <strong style={{ color: KZ.t1 }}>sozinho ou com sua família</strong>.
+            Fale o gasto por voz e pronto: lançado em 5 segundos.
           </Typography>
         </FadeUp>
 
@@ -134,13 +134,13 @@ function Hero({ onCTA }: { onCTA: () => void }) {
                 boxShadow: '0 8px 32px rgba(16,185,129,0.35)',
                 '&:hover': { filter: 'brightness(1.1)', transform: 'translateY(-2px)', boxShadow: '0 12px 40px rgba(16,185,129,0.45)' },
               }}>
-              Começar 7 dias grátis
+              Quero assumir o controle — grátis
             </Button>
             <Button variant="outlined" size="large"
               onClick={() => document.getElementById('funcionalidades')?.scrollIntoView({ behavior: 'smooth' })}
               sx={{ borderColor: KZ.border, color: KZ.t1, borderRadius: 2.5, fontSize: '1rem', px: 3, py: 1.5,
                 '&:hover': { borderColor: KZ.green, bgcolor: 'rgba(16,185,129,0.05)' } }}>
-              Ver como funciona
+              Ver o app por dentro
             </Button>
           </Box>
         </FadeUp>
@@ -148,9 +148,9 @@ function Hero({ onCTA }: { onCTA: () => void }) {
         <FadeUp delay={0.28}>
           <Box sx={{ display: 'flex', gap: { xs: 2, md: 4 }, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              { value: '7 dias', label: 'grátis para testar' },
-              { value: 'R$ 0', label: 'para começar' },
-              { value: '100%', label: 'seguro e privado' },
+              { value: '5 seg', label: 'para lançar um gasto por voz' },
+              { value: '7 dias', label: 'grátis para testar tudo' },
+              { value: '0', label: 'planilhas para manter' },
             ].map(s => (
               <Box key={s.label} sx={{ textAlign: 'center' }}>
                 <Typography sx={{ fontSize: { xs: '1.4rem', md: '1.8rem' }, fontWeight: 900, color: KZ.green, letterSpacing: '-0.03em' }}>{s.value}</Typography>
@@ -286,7 +286,7 @@ const FEATURES = [
     icon: <WaterfallChartIcon sx={{ fontSize: 28 }} />,
     color: KZ.green,
     title: 'Previsão de caixa dia a dia',
-    desc: 'O Kaizen calcula seu saldo futuro com base em todas as suas contas e receitas agendadas. Avisa exatamente qual dia você vai ficar no vermelho — antes que aconteça.',
+    desc: '"No dia 18 você fica no vermelho." O Kaizen projeta seu saldo dia a dia e te avisa antes de acontecer — não depois, quando já virou juros.',
   },
   {
     icon: <AutoGraphIcon sx={{ fontSize: 28 }} />,
@@ -297,8 +297,8 @@ const FEATURES = [
   {
     icon: <PeopleIcon sx={{ fontSize: 28 }} />,
     color: KZ.blue,
-    title: 'Modo parceria (casal)',
-    desc: 'Visão individual e visão conjunta da família. Cada um vê suas despesas pessoais e ambos veem o quadro completo da casa.',
+    title: 'Sozinho ou em família',
+    desc: 'Use individual e pronto. Ou convide seu par: cada um vê o seu, os dois veem o quadro completo da casa. Você escolhe.',
   },
   {
     icon: <WhatsAppIcon sx={{ fontSize: 28 }} />,
@@ -310,7 +310,7 @@ const FEATURES = [
     icon: <RadarIcon sx={{ fontSize: 28 }} />,
     color: '#EC4899',
     title: 'Radar de assinaturas',
-    desc: 'Detecta automaticamente cobranças recorrentes nos seus lançamentos. Descobre serviços que você esqueceu de cancelar.',
+    desc: 'Encontra cobranças recorrentes escondidas nos seus lançamentos. Uma assinatura esquecida de R$ 30/mês são R$ 360/ano indo embora — o radar acha e você decide.',
   },
   {
     icon: <EmojiEventsIcon sx={{ fontSize: 28 }} />,
@@ -340,13 +340,13 @@ function Features() {
           <Chip label="Funcionalidades" size="small"
             sx={{ mb: 2, bgcolor: 'rgba(16,185,129,0.08)', color: KZ.green, border: `1px solid rgba(16,185,129,0.2)`, fontWeight: 600, fontSize: '0.72rem' }} />
           <Typography sx={{ fontSize: { xs: '1.8rem', md: '2.8rem' }, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.15 }}>
-            Tudo que você precisa para{' '}
+            Pare de reagir ao extrato.{' '}
             <Box component="span" sx={{ background: KZ_GRADIENTS.green, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              dominar suas finanças
+              Comece a decidir antes.
             </Box>
           </Typography>
-          <Typography sx={{ fontSize: '1rem', color: KZ.t2, mt: 2, maxWidth: 500, mx: 'auto' }}>
-            Recursos exclusivos que você não encontra em nenhum outro app financeiro brasileiro.
+          <Typography sx={{ fontSize: '1rem', color: KZ.t2, mt: 2, maxWidth: 520, mx: 'auto' }}>
+            Pra você. Pro casal. Pra família inteira. Recursos que você não encontra em nenhum outro app financeiro brasileiro.
           </Typography>
         </Box>
       </FadeUp>
@@ -380,10 +380,10 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
 
   const plans = [
     {
-      name: 'Plano Família',
+      name: 'Kaizen Completo',
       price:   yearly ? 'R$ 20,75' : 'R$ 29,90',
       period:  yearly ? '/mês (cobrado anualmente)' : '/mês',
-      sub:     yearly ? 'R$ 249/ano — 2 meses grátis' : 'Cancele quando quiser',
+      sub:     yearly ? 'R$ 249/ano — 2 meses grátis' : 'Menos de R$ 1 por dia · cancele quando quiser',
       highlight: true,
       features: [
         'Contas a pagar ilimitadas',
@@ -412,10 +412,10 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
             <Chip label="Preços" size="small"
               sx={{ mb: 2, bgcolor: 'rgba(16,185,129,0.08)', color: KZ.green, border: `1px solid rgba(16,185,129,0.2)`, fontWeight: 600, fontSize: '0.72rem' }} />
             <Typography sx={{ fontSize: { xs: '1.8rem', md: '2.8rem' }, fontWeight: 900, letterSpacing: '-0.03em' }}>
-              Simples e transparente
+              Um plano. Tudo incluso.
             </Typography>
-            <Typography sx={{ fontSize: '1rem', color: KZ.t2, mt: 2 }}>
-              Um plano completo. Sem pegadinhas. Sem features escondidas.
+            <Typography sx={{ fontSize: '1rem', color: KZ.t2, mt: 2, maxWidth: 480, mx: 'auto' }}>
+              Menos de R$ 1 por dia — e costuma se pagar na primeira assinatura esquecida que o radar encontrar.
             </Typography>
 
             {/* Toggle anual/mensal */}
@@ -487,6 +487,7 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
 
 // ── FAQ ───────────────────────────────────────────────────────────────────────
 const FAQS = [
+  { q: 'Preciso usar com a família ou funciona sozinho?', a: 'Funciona perfeitamente sozinho — a maioria começa assim. O modo família é opcional: se um dia quiser dividir o controle com seu par, é só convidar. Você escolhe, o preço é o mesmo.' },
   { q: 'Como funciona o período grátis?', a: 'Você tem 7 dias grátis para testar tudo. Pedimos o cartão na entrada para garantir a continuidade: se você gostar, a assinatura começa automaticamente no 8º dia. Não quer continuar? É só cancelar antes do fim do período e nada é cobrado.' },
   { q: 'Os dados são seguros?', a: 'Sim. Usamos criptografia PBKDF2 para senhas e JWT para autenticação. Seus dados financeiros ficam em banco isolado por família, no Cloudflare D1.' },
   { q: 'Posso usar com meu cônjuge/parceiro(a)?', a: 'Sim! O modo parceria é nativo no Kaizen. Dois usuários podem compartilhar a mesma casa (household) e ver tanto as despesas individuais quanto o panorama familiar.' },
@@ -539,13 +540,14 @@ function FinalCTA({ onCTA }: { onCTA: () => void }) {
           position: 'relative',
         }}>
           <Typography sx={{ fontSize: { xs: '1.8rem', md: '2.5rem' }, fontWeight: 900, letterSpacing: '-0.03em', mb: 2 }}>
-            Comece hoje.{' '}
+            Daqui a 30 dias você vai saber{' '}
             <Box component="span" sx={{ background: KZ_GRADIENTS.green, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Sem risco.
+              exatamente onde foi cada real
             </Box>
           </Typography>
           <Typography sx={{ fontSize: '1rem', color: KZ.t2, mb: 4, lineHeight: 1.7 }}>
-            7 dias grátis. Você vai saber em menos de 1 semana se o Kaizen vai transformar sua vida financeira. Cancele quando quiser.
+            Ou continua no escuro mais um mês. Em 2 minutos você cria a conta, lança o primeiro
+            gasto por voz e vê sua previsão de caixa. 7 dias grátis — cancele quando quiser.
           </Typography>
           <Button variant="contained" size="large" onClick={onCTA} endIcon={<ArrowForwardIcon />}
             sx={{
@@ -554,7 +556,7 @@ function FinalCTA({ onCTA }: { onCTA: () => void }) {
               boxShadow: '0 8px 32px rgba(16,185,129,0.35)',
               '&:hover': { filter: 'brightness(1.1)', transform: 'translateY(-2px)', boxShadow: '0 12px 40px rgba(16,185,129,0.45)' },
             }}>
-            Criar conta gratuita
+            Começar agora — 7 dias grátis
           </Button>
           <Typography sx={{ mt: 2, fontSize: '0.72rem', color: KZ.t3 }}>
             7 dias grátis · Cancele quando quiser · Dados 100% privados

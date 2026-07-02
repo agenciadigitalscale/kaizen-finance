@@ -126,6 +126,7 @@ export const api = {
     updateProfile: (data: { name: string; householdName?: string }) => request('/api/account/profile', { method: 'PATCH', body: JSON.stringify(data) }),
     changePassword: (currentPassword: string, newPassword: string) => request('/api/account/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
     deleteAccount: (password: string) => request('/api/account/delete', { method: 'POST', body: JSON.stringify({ password }) }),
+    linkWhatsapp: (phone: string) => request('/api/account/whatsapp', { method: 'POST', body: JSON.stringify({ phone }) }),
   },
 
   whatsapp: {

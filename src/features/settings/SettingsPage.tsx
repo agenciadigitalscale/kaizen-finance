@@ -80,6 +80,19 @@ export default function SettingsPage() {
     finally { setWaL(false) }
   }
 
+  async function linkWhatsApp() {
+    setWaMsg(null)
+    if (isDemo) { setWaMsg({ type: 'error', text: 'Indisponível no modo demo.' }); return }
+    if (!waPhone.trim()) { setWaMsg({ type: 'error', text: 'Informe seu número com DDD.' }); return }
+    setWaL(true)
+    try {
+      const res = await api.account.linkWhatsapp(waPhone.trim()) as { ok: boolean; error?: string }
+      if (res.ok) setWaMsg({ type: 'success', text: 'Número vinculado! Agora é só mandar áudio ou texto pro WhatsApp do Kaizen que o gasto entra sozinho.' })
+      else setWaMsg({ type: 'error', text: res.error ?? 'Falha ao vincular.' })
+    } catch { setWaMsg({ type: 'error', text: 'Erro de conexão.' }) }
+    finally { setWaL(false) }
+  }
+
   const transactions = useTransactionsStore(s => s.transactions)
   const bills        = useBillsStore(s => s.bills)
 
@@ -188,19 +201,24 @@ export default function SettingsPage() {
           <Typography sx={{ fontSize: '0.85rem', fontWeight: 700 }}>Alertas no WhatsApp</Typography>
         </Box>
         <Typography sx={{ fontSize: '0.74rem', color: KZ.t2, mb: 2, lineHeight: 1.5 }}>
-          Avise antes de cada vencimento direto no seu WhatsApp. Envie uma mensagem de teste para confirmar.
+          Vincule seu número e <strong>lance gastos sem abrir o app</strong>: mande um áudio ou texto
+          ("gastei 100 no mercado") pro WhatsApp do Kaizen e ele registra sozinho. Também é por aqui que chegam os alertas de vencimento.
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-          <TextField label="Seu WhatsApp (com DDD)" size="small" fullWidth value={waPhone}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <TextField label="Seu WhatsApp (com DDD)" size="small" sx={{ flex: 1, minWidth: 180 }} value={waPhone}
             onChange={e => setWaPhone(e.target.value)} placeholder="11999999999" />
+          <Button variant="contained" onClick={linkWhatsApp} disabled={waLoading}
+            sx={{ background: KZ_GRADIENTS.green, borderRadius: 2, fontWeight: 700, whiteSpace: 'nowrap' }}>
+            {waLoading ? 'Salvando…' : 'Vincular'}
+          </Button>
           <Button variant="outlined" onClick={testWhatsApp} disabled={waLoading}
             sx={{ borderColor: '#25D366', color: '#25D366', borderRadius: 2, fontWeight: 700, whiteSpace: 'nowrap', '&:hover': { borderColor: '#25D366', bgcolor: 'rgba(37,211,102,0.06)' } }}>
-            {waLoading ? 'Enviando…' : 'Testar'}
+            Testar
           </Button>
         </Box>
         <Feedback msg={waMsg} />
         <Typography sx={{ fontSize: '0.66rem', color: KZ.t3, mt: 1.5 }}>
-          Requer integração Z-API configurada no servidor. O envio automático antes do vencimento é ativado no lançamento.
+          O robô e os alertas ativam quando a integração Z-API for configurada no servidor (semana do lançamento).
         </Typography>
       </Paper>
 

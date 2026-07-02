@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   name         TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   avatar_url   TEXT,
+  whatsapp_phone TEXT,
   created_at   INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
 );
 
