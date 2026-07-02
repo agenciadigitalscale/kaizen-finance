@@ -303,8 +303,8 @@ const FEATURES = [
   {
     icon: <WhatsAppIcon sx={{ fontSize: 28 }} />,
     color: '#25D366',
-    title: 'Alertas no WhatsApp',
-    desc: 'Receba notificações de vencimento no seu WhatsApp antes que a conta vire dívida. Nunca mais esqueça um boleto.',
+    title: 'Lance gastos pelo WhatsApp',
+    desc: 'Manda um áudio: "gastei 100 no mercado". O Kaizen entende, registra e responde na hora — sem você abrir o app. E ainda te avisa antes de cada vencimento.',
   },
   {
     icon: <RadarIcon sx={{ fontSize: 28 }} />,
@@ -488,6 +488,7 @@ function Pricing({ onCTA }: { onCTA: () => void }) {
 // ── FAQ ───────────────────────────────────────────────────────────────────────
 const FAQS = [
   { q: 'Preciso usar com a família ou funciona sozinho?', a: 'Funciona perfeitamente sozinho — a maioria começa assim. O modo família é opcional: se um dia quiser dividir o controle com seu par, é só convidar. Você escolhe, o preço é o mesmo.' },
+  { q: 'Preciso abrir o app toda hora pra lançar gastos?', a: 'Não — essa é a mágica do Kaizen. Dentro do app, segure o botão Lançar e fale ("gastei 50 no mercado") que a IA registra em 5 segundos. E pelo WhatsApp: mande um áudio ou texto pro número do Kaizen e o gasto entra sozinho no seu painel, com confirmação na hora.' },
   { q: 'Como funciona o período grátis?', a: 'Você tem 7 dias grátis para testar tudo. Pedimos o cartão na entrada para garantir a continuidade: se você gostar, a assinatura começa automaticamente no 8º dia. Não quer continuar? É só cancelar antes do fim do período e nada é cobrado.' },
   { q: 'Os dados são seguros?', a: 'Sim. Usamos criptografia PBKDF2 para senhas e JWT para autenticação. Seus dados financeiros ficam em banco isolado por família, no Cloudflare D1.' },
   { q: 'Posso usar com meu cônjuge/parceiro(a)?', a: 'Sim! O modo parceria é nativo no Kaizen. Dois usuários podem compartilhar a mesma casa (household) e ver tanto as despesas individuais quanto o panorama familiar.' },
@@ -582,9 +583,10 @@ function Footer() {
           © {new Date().getFullYear()} Kaizen Finance · Melhoria contínua das suas finanças
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {['Privacidade', 'Termos'].map(l => (
-            <Typography key={l} sx={{ fontSize: '0.72rem', color: KZ.t3, cursor: 'pointer', '&:hover': { color: KZ.t1 } }}>{l}</Typography>
-          ))}
+          <Typography component="a" href="/privacidade"
+            sx={{ fontSize: '0.72rem', color: KZ.t3, cursor: 'pointer', textDecoration: 'none', '&:hover': { color: KZ.t1 } }}>
+            Privacidade
+          </Typography>
         </Box>
       </Box>
     </Box>
